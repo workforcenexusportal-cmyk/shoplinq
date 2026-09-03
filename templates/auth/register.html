@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Create account — ShopLinq{% endblock %}
+{% block page_id %}register{% endblock %}
+
+{% block content %}
+<div class="auth-card card">
+  <h1>Create account</h1>
+  <form method="post">
+    <label>Full name<input type="text" name="name" required placeholder="Alex Morgan"></label>
+    <label>Email<input type="email" name="email" required placeholder="you@example.com"></label>
+    <label>Password<input type="password" name="password" required minlength="8" placeholder="At least 8 characters"></label>
+    <label>Confirm password<input type="password" name="confirm" required placeholder="Repeat your password"></label>
+    <button type="submit" class="btn btn-primary btn-block">Create your account</button>
+  </form>
+  <p class="muted center">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Payment Methods — ShopLinq{% endblock %}
+{% block page_id %}payment-methods{% endblock %}
+
+{% block subnav %}
+<div class="subnav"><div class="container">
+  <a href="{{ url_for('account.dashboard') }}">Overview</a>
+  <a href="{{ url_for('account.orders') }}">Your Orders</a>
+  <a href="{{ url_for('account.addresses') }}">Addresses</a>
+  <a class="active" href="{{ url_for('account.payment_methods') }}">Payment Methods</a>
+  <a href="{{ url_for('account.wishlist') }}">Wishlist</a>
+  <a href="{{ url_for('account.profile') }}">Login &amp; Security</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Payment Methods</h1>
+
+<div class="two-col-layout">
+  <section class="address-list">
+    {% for pm in payment_methods %}
+    <div class="card address-card">
+      <p class="badge">{{ pm.card_brand }}{% if pm.is_default %} &middot; Default{% endif %}</p>
+      <p><strong>&bull;&bull;&bull;&bull; {{ pm.last4 }}</strong><br>
+        <span class="muted">Expires {{ '%02d'|format(pm.exp_month) }}/{{ pm.exp_year }}</span></p>
+      <div class="card-actions">
+        <form method="post" action="{{ url_for('account.payment_method_delete', pm_id=pm.id) }}">
+          <button type="submit" class="btn btn-secondary btn-sm">Remove</button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h2>No cards saved</h2>
+      <p>Add a card for faster checkout. We only ever store the brand and last 4 digits.</p>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <h2>Add a card</h2>
+    <p class="muted">Test mode — try 4242 4242 4242 4242. Only the brand and last 4 digits are stored.</p>
+    <form method="post" class="stack-form">
+      <label>Card number<input type="text" name="card_number" required placeholder="4242 4242 4242 4242" autocomplete="off"></label>
+      <div class="form-grid">
+        <label>Exp. month<input type="number" name="exp_month" min="1" max="12" required placeholder="12"></label>
+        <label>Exp. year<input type="number" name="exp_year" min="2026" required placeholder="2030"></label>
+      </div>
+      <label class="checkbox-row"><input type="checkbox" name="is_default" value="1"> Set as default</label>
+      <button type="submit" class="btn btn-primary">Save card</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

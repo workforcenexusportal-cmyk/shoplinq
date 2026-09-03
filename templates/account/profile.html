@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Login &amp; Security — ShopLinq{% endblock %}
+{% block page_id %}profile{% endblock %}
+
+{% block subnav %}
+<div class="subnav"><div class="container">
+  <a href="{{ url_for('account.dashboard') }}">Overview</a>
+  <a href="{{ url_for('account.orders') }}">Your Orders</a>
+  <a href="{{ url_for('account.addresses') }}">Addresses</a>
+  <a href="{{ url_for('account.payment_methods') }}">Payment Methods</a>
+  <a href="{{ url_for('account.wishlist') }}">Wishlist</a>
+  <a class="active" href="{{ url_for('account.profile') }}">Login &amp; Security</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Login &amp; Security</h1>
+
+<div class="two-col-layout">
+  <section class="card">
+    <h2>Profile</h2>
+    <form method="post" class="stack-form">
+      <input type="hidden" name="action" value="details">
+      <label>Name<input type="text" name="name" required value="{{ current_user.name }}"></label>
+      <label>Email<input type="email" value="{{ current_user.email }}" disabled></label>
+      <p class="muted">Member since {{ current_user.created_date.strftime('%B %Y') }}</p>
+      <button type="submit" class="btn btn-primary">Save changes</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Change password</h2>
+    <form method="post" class="stack-form">
+      <input type="hidden" name="action" value="password">
+      <label>Current password<input type="password" name="current_password" required></label>
+      <label>New password<input type="password" name="new_password" required minlength="8"></label>
+      <label>Confirm new password<input type="password" name="confirm" required></label>
+      <button type="submit" class="btn btn-primary">Update password</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

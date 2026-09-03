@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Admin — ShopLinq{% endblock %}
+{% block page_id %}admin{% endblock %}
+
+{% block subnav %}
+<div class="subnav admin-subnav"><div class="container">
+  <a class="active" href="{{ url_for('admin.index') }}">Dashboard</a>
+  <a href="{{ url_for('admin.products') }}">Products</a>
+  <a href="{{ url_for('admin.categories') }}">Categories</a>
+  <a href="{{ url_for('admin.orders') }}">Orders</a>
+  <a href="{{ url_for('admin.analytics') }}">Analytics</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Admin dashboard</h1>
+
+<div class="stat-tiles admin-stats">
+  <div class="stat card"><span class="stat-num">{{ stats.customers }}</span><span>customers</span></div>
+  <div class="stat card"><span class="stat-num">{{ stats.products }}</span><span>products</span></div>
+  <div class="stat card"><span class="stat-num">{{ stats.orders }}</span><span>orders</span></div>
+  <div class="stat card"><span class="stat-num">{{ stats.revenue|money }}</span><span>lifetime revenue</span></div>
+</div>
+
+<div class="two-col-layout">
+  <section class="card">
+    <div class="account-head"><h2>Recent orders</h2>
+      <a class="link-muted" href="{{ url_for('admin.orders') }}">All orders &rarr;</a></div>
+    {% for order in recent_orders %}
+    <a class="order-row" href="{{ url_for('admin.order_detail', order_id=order.id) }}">
+      <span class="order-number">{{ order.order_number }}</span>
+      <span class="muted">{{ order.customer.name }}</span>
+      <span class="badge status-{{ order.status }}">{{ order.status_label }}</span>
+      <span class="order-total">{{ order.total|money }}</span>
+    </a>
+    {% else %}<p class="muted">No orders yet.</p>{% endfor %}
+  </section>
+
+  <section class="card">
+    <h2>Low stock alert</h2>
+    {% for p in low_stock %}
+    <div class="order-row">
+      <span class="order-number">{{ p.name[:34] }}</span>
+      <span class="badge {% if p.stock == 0 %}status-out{% else %}status-low{% endif %}">{{ p.stock }} left</span>
+      <a class="link-muted" href="{{ url_for('admin.product_edit', product_id=p.id) }}">Edit &rarr;</a>
+    </div>
+    {% else %}<p class="muted">All products are well stocked.</p>{% endfor %}
+  </section>
+</div>
+{% endblock %}

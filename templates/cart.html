@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Your Cart — ShopLinq{% endblock %}
+{% block page_id %}cart{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Shopping Cart</h1>
+
+{% if not summary.lines %}
+<div class="empty-state">
+  <h2>Your cart is empty</h2>
+  <p>Looks like you haven't added anything yet. Explore our categories to find something you'll love.</p>
+  <div class="empty-actions">
+    <a class="btn btn-primary" href="{{ url_for('main.products') }}">Browse all products</a>
+    {% if nav_categories %}
+    <a class="btn btn-outline" href="{{ url_for('main.products', slug=nav_categories[0].slug) }}">Shop {{ nav_categories[0].name }}</a>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div id="cart-content" class="cart-layout">
+  <section class="cart-items">
+    {% for line in summary.lines %}
+    {% set p = line.product %}
+    <article class="cart-row" data-product-id="{{ p.id }}">
+      <a class="cart-item-img" href="{{ url_for('main.product', slug=p.slug) }}">
+        {% if p.primary_image %}<img src="{{ p.primary_image.url }}" alt="{{ p.name }}">{% endif %}
+      </a>
+      <div class="cart-item-info">
+        <a class="card-title" href="{{ url_for('main.product', slug=p.slug) }}">{{ p.name }}</a>
+        <p class="muted">{{ p.brand or 'ShopLinq' }}</p>
+        {% if p.in_stock %}<p class="stock">In stock</p>{% else %}<p class="stock out">Out of stock</p>{% endif %}
+        <div class="cart-item-actions">
+          <div class="qty-stepper">
+            <button type="button" class="qty-btn js-qty-minus" data-product-id="{{ p.id }}" aria-label="Decrease">&minus;</button>
+            <input type="number" class="qty-input js-qty-input" data-product-id="{{ p.id }}"
+                   value="{{ line.qty }}" min="0" max="{{ p.stock if p.stock else 99 }}" aria-label="Quantity">
+            <button type="button" class="qty-btn js-qty-plus" data-product-id="{{ p.id }}" aria-label="Increase">+</button>
+          </div>
+          <button type="button" class="link-btn js-remove" data-product-id="{{ p.id }}">Remove</button>
+          <button type="button" class="link-btn js-save-later" data-product-id="{{ p.id }}">Save for later</button>
+        </div>
+      </div>
+      <div class="cart-item-price">
+        <strong class="price" data-unit-price="{{ p.effective_price }}">{{ p.effective_price|money }}</strong>
+        <p class="row-total muted" id="row-total-{{ p.id }}">{{ (p.effective_price * line.qty)|money }}</p>
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+
+  <aside class="cart-summary card">
+    <h2>Order summary</h2>
+    <dl class="totals">
+      <div><dt>Items ({{ summary.count }})</dt><dd id="sum-subtotal">{{ summary.subtotal|money }}</dd></div>
+      {% if summary.discount %}
+      <div class="discount"><dt>Promo ({{ summary.promo.code if summary.promo }})</dt><dd id="sum-discount">-{{ summary.discount|money }}</dd></div>
+      {% else %}
+      <div class="hidden-discount"><dt>Promo</dt><dd id="sum-discount">-{{ 0|money }}</dd></div>
+      {% endif %}
+      <div><dt>Estimated tax</dt><dd id="sum-tax">{{ summary.tax|money }}</dd></div>
+      <div><dt>Shipping</dt><dd id="sum-shipping">{% if summary.shipping_fee == 0 %}FREE{% else %}{{ summary.shipping_fee|money }}{% endif %}</dd></div>
+      <div class="grand"><dt>Order total</dt><dd id="sum-total">{{ summary.total|money }}</dd></div>
+    </dl>
+    <form id="promo-form" class="promo-form">
+      <label for="promo-input">Promo code</label>
+      <div class="promo-row">
+        <input type="text" id="promo-input" placeholder="e.g. SAVE10"
+               value="{{ summary.promo.code if summary.promo else '' }}">
+        <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+      </div>
+      <p class="promo-msg muted" id="promo-msg">Try SAVE10 or VIP20</p>
+    </form>
+    <a class="btn btn-primary btn-block" href="{{ url_for('cart.checkout') }}">Proceed to Checkout</a>
+    <p class="muted secure-note">Secure checkout &middot; Card payments in Stripe test mode</p>
+  </aside>
+</div>
+{% endif %}
+{% endblock %}

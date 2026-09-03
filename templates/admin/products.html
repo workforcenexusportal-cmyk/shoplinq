@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Products — Admin — ShopLinq{% endblock %}
+{% block page_id %}admin-products{% endblock %}
+
+{% block subnav %}
+<div class="subnav admin-subnav"><div class="container">
+  <a href="{{ url_for('admin.index') }}">Dashboard</a>
+  <a class="active" href="{{ url_for('admin.products') }}">Products</a>
+  <a href="{{ url_for('admin.categories') }}">Categories</a>
+  <a href="{{ url_for('admin.orders') }}">Orders</a>
+  <a href="{{ url_for('admin.analytics') }}">Analytics</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<div class="account-head">
+  <h1 class="page-title">Products</h1>
+  <a class="btn btn-primary" href="{{ url_for('admin.product_new') }}">+ New product</a>
+</div>
+
+<form method="get" class="admin-search">
+  <input type="text" name="q" placeholder="Search products…" value="{{ request.args.get('q', '') }}">
+  <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+</form>
+
+<table class="table">
+  <thead>
+    <tr><th>ID</th><th>Product</th><th>Brand</th><th>Category</th><th>Price</th><th>Stock</th><th>Flags</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for p in products %}
+    <tr>
+      <td>{{ p.id }}</td>
+      <td class="invoice-item">
+        {% if p.primary_image %}<img src="{{ p.primary_image.url }}" alt="">{% endif %}
+        <a href="{{ url_for('main.product', slug=p.slug) }}">{{ p.name[:40] }}</a>
+      </td>
+      <td>{{ p.brand or '—' }}</td>
+      <td>{{ p.category.name if p.category else '—' }}</td>
+      <td>{{ p.effective_price|money }}{% if p.is_deal and p.deal_price %}<br><s class="muted">{{ p.price|money }}</s>{% endif %}</td>
+      <td><span class="badge {% if p.stock == 0 %}status-out{% elif p.stock <= 5 %}status-low{% endif %}">{{ p.stock }}</span></td>
+      <td>
+        {% if p.is_deal %}<span class="badge deal">Deal</span>{% endif %}
+        {% if p.is_featured %}<span class="badge featured">Featured</span>{% endif %}
+      </td>
+      <td class="table-actions">
+        <a class="btn btn-outline btn-sm" href="{{ url_for('admin.product_edit', product_id=p.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('admin.product_delete', product_id=p.id) }}">
+          <button type="submit" class="btn btn-secondary btn-sm">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="muted">No products found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if pagination.pages > 1 %}
+<nav class="pagination">
+  {% for n in pagination.iter_pages() %}
+    {% if n %}<a class="page-link {% if n == pagination.page %}current{% endif %}"
+      href="{{ url_for('admin.products', q=request.args.get('q',''), page=n) }}">{{ n }}</a>
+    {% else %}<span class="page-gap">&hellip;</span>{% endif %}
+  {% endfor %}
+</nav>
+{% endif %}
+{% endblock %}

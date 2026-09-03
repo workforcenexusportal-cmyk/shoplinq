@@ -1,0 +1,44 @@
+{% macro stars(rating, count=None) %}
+{% set rounded = ((rating or 0) + 0.5)|int %}
+<span class="stars" title="{{ '%.1f'|format(rating or 0) }} out of 5 stars">
+  {%- for i in range(1, 6) -%}
+  <span class="star{% if i <= rounded %} filled{% endif %}">★</span>
+  {%- endfor -%}
+</span>
+{% if count is not none %}<span class="rating-count">({{ count }})</span>{% endif %}
+{% endmacro %}
+
+{% macro product_card(p) %}
+<article class="product-card">
+  <div class="card-media">
+    <a href="{{ url_for('main.product', slug=p.slug) }}">
+      {% if p.primary_image %}
+      <img src="{{ p.primary_image.url }}" alt="{{ p.name }}" loading="lazy">
+      {% endif %}
+    </a>
+    <button type="button" class="icon-btn js-wishlist" data-product-id="{{ p.id }}"
+            aria-label="Save to wishlist" title="Save to wishlist">&#9825;</button>
+  </div>
+  <div class="card-body">
+    <a class="card-title" href="{{ url_for('main.product', slug=p.slug) }}">{{ p.name }}</a>
+    <div class="card-rating">{{ stars(p.rating, p.rating_count) }}</div>
+    <div class="card-price">
+      {% if p.is_deal and p.deal_price %}
+      <span class="deal-badge">Deal</span>
+      <s class="old-price">{{ p.price|money }}</s>
+      {% endif %}
+      <strong class="price">{{ p.effective_price|money }}</strong>
+    </div>
+    <p class="card-brand">{{ p.brand or "ShopLinq" }}</p>
+    {% if p.in_stock %}
+      {% if p.stock <= 5 %}<p class="stock low">Only {{ p.stock }} left in stock</p>
+      {% else %}<p class="stock">In stock</p>{% endif %}
+      <button type="button" class="btn btn-primary btn-sm js-add-to-cart"
+              data-product-id="{{ p.id }}">Add to Cart</button>
+    {% else %}
+      <p class="stock out">Currently unavailable</p>
+      <button type="button" class="btn btn-secondary btn-sm" disabled>Out of stock</button>
+    {% endif %}
+  </div>
+</article>
+{% endmacro %}

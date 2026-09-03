@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% from "_macros.html" import product_card %}
+{% block title %}ShopLinq — Everything you need, delivered{% endblock %}
+
+{% block content %}
+<section class="hero" aria-label="Featured promotions">
+  <div class="hero-carousel" id="hero-carousel">
+    <div class="hero-track">
+      <div class="hero-slide slide-blue">
+        <div class="hero-copy">
+          <p class="hero-kicker">Tech Fest</p>
+          <h2>Up to 40% off electronics</h2>
+          <p>Phones, laptops, audio and more — this week only.</p>
+          <a class="btn btn-light" href="{{ url_for('main.products', slug='electronics') }}">Shop Tech</a>
+        </div>
+      </div>
+      <div class="hero-slide slide-teal">
+        <div class="hero-copy">
+          <p class="hero-kicker">Home Refresh</p>
+          <h2>Cozy up your space</h2>
+          <p>Up to 30% off kitchen and home essentials.</p>
+          <a class="btn btn-light" href="{{ url_for('main.products', slug='home-kitchen') }}">Shop Home</a>
+        </div>
+      </div>
+      <div class="hero-slide slide-navy">
+        <div class="hero-copy">
+          <p class="hero-kicker">ShopLinq Perks</p>
+          <h2>Free shipping over $50</h2>
+          <p>On every standard-delivery order, every day.</p>
+          <a class="btn btn-light" href="{{ url_for('main.products') }}">Start Shopping</a>
+        </div>
+      </div>
+    </div>
+    <button class="hero-arrow hero-prev" type="button" aria-label="Previous slide">&#10094;</button>
+    <button class="hero-arrow hero-next" type="button" aria-label="Next slide">&#10095;</button>
+    <div class="hero-dots" id="hero-dots"></div>
+  </div>
+</section>
+
+<section class="section">
+  <h2 class="section-title">Shop by category</h2>
+  <div class="category-tiles">
+    {% for c in nav_categories %}
+    <a class="category-tile" href="{{ url_for('main.products', slug=c.slug) }}">
+      <span class="tile-icon tile-{{ loop.index0 % 6 }}">{{ c.name[0] }}</span>
+      <span class="tile-name">{{ c.name }}</span>
+      <span class="tile-count">{{ c.children|length + 0 }} subcategories</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <h2 class="section-title">Deals of the Day</h2>
+    <p class="deal-countdown">Ends in <span id="deal-countdown">--:--:--</span></p>
+  </div>
+  {% if deals %}
+  <div class="product-grid">
+    {% for p in deals %}{{ product_card(p) }}{% endfor %}
+  </div>
+  {% else %}
+  <p class="empty-note">No deals right now — check back soon!</p>
+  {% endif %}
+</section>
+
+<section class="section">
+  <h2 class="section-title">Recommended for you</h2>
+  <div class="product-grid">
+    {% for p in recommended[:6] %}{{ product_card(p) }}{% endfor %}
+  </div>
+  <div class="product-grid">
+    {% for p in recommended[6:12] %}{{ product_card(p) }}{% endfor %}
+  </div>
+</section>
+
+<section class="section">
+  <h2 class="section-title">New arrivals</h2>
+  <div class="product-grid">
+    {% for p in new_arrivals %}{{ product_card(p) }}{% endfor %}
+  </div>
+</section>
+{% endblock %}

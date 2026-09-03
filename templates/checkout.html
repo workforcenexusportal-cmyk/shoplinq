@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Checkout — ShopLinq{% endblock %}
+{% block page_id %}checkout{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Checkout</h1>
+
+<form method="post" id="checkout-form" class="checkout-layout" action="{{ url_for('cart.place') }}">
+  <div class="checkout-main">
+    <ol class="checkout-steps" id="checkout-steps">
+      <li class="active" data-step="1">1. Shipping address</li>
+      <li data-step="2">2. Delivery options</li>
+      <li data-step="3">3. Payment method</li>
+      <li data-step="4">4. Review order</li>
+    </ol>
+
+    <section class="checkout-panel card" data-panel="1">
+      <h2>Where should we deliver?</h2>
+      {% for addr in addresses %}
+      <label class="choice-row">
+        <input type="radio" name="address_choice" value="saved-{{ addr.id }}"
+               {% if loop.first or (selected_address and selected_address.id == addr.id) %}checked{% endif %}>
+        <span class="choice-copy">
+          <strong>{{ addr.full_name }} <em class="badge">{{ addr.label }}</em></strong>
+          <span>{{ addr.one_line() }}, {{ addr.country }}</span>
+          {% if addr.phone %}<span class="muted">Phone: {{ addr.phone }}</span>{% endif %}
+        </span>
+      </label>
+      {% endfor %}
+      <label class="choice-row">
+        <input type="radio" name="address_choice" value="new" {% if not addresses %}checked{% endif %}>
+        <span class="choice-copy"><strong>Use a new address</strong></span>
+      </label>
+      <div class="new-address-fields" id="new-address-fields" {% if addresses %}hidden{% endif %}>
+        <div class="form-grid">
+          <label>Full name<input type="text" name="full_name" placeholder="Alex Morgan"></label>
+          <label>Phone<input type="text" name="phone" placeholder="+1 555 010 2030"></label>
+        </div>
+        <label>Street address<input type="text" name="line1" placeholder="123 Main Street"></label>
+        <label>Apartment, suite, etc. (optional)<input type="text" name="line2"></label>
+        <div class="form-grid">
+          <label>City<input type="text" name="city" placeholder="Springfield"></label>
+          <label>State / Region<input type="text" name="state" placeholder="IL"></label>
+        </div>
+        <div class="form-grid">
+          <label>ZIP / Postal code<input type="text" name="postal_code" placeholder="62701"></label>
+          <label>Country<input type="text" name="country" value="United States"></label>
+        </div>
+        <label class="checkbox-row"><input type="checkbox" name="save_address" value="1" checked> Save this address to my account</label>
+      </div>
+    </section>
+
+    <section class="checkout-panel card" data-panel="2" hidden>
+      <h2>Choose a delivery speed</h2>
+      <label class="choice-row">
+        <input type="radio" name="delivery" value="standard" checked>
+        <span class="choice-copy">
+          <strong>Standard delivery</strong>
+          <span>5 business days{% if summary.shipping_fee == 0 and summary.subtotal - summary.discount >= 50 %} — FREE on this order{% endif %}</span>
+        </span>
+        <strong class="choice-price">$4.99 <em>(FREE over $50)</em></strong>
+      </label>
+      <label class="choice-row">
+        <input type="radio" name="delivery" value="express">
+        <span class="choice-copy"><strong>Express delivery</strong><span>2 business days</span></span>
+        <strong class="choice-price">$14.99</strong>
+      </label>
+    </section>
+
+    <section class="checkout-panel card" data-panel="3" hidden>
+      <h2>How would you like to pay?</h2>
+      <label class="choice-row">
+        <input type="radio" name="payment" value="card" checked>
+        <span class="choice-copy"><strong>Credit or debit card</strong>
+          <span class="muted">{% if stripe_key %}Secure Stripe checkout (test mode){% else %}Test mode — use 4242 4242 4242 4242; declines with 4000 0000 0000 0002{% endif %}</span>
+        </span>
+      </label>
+      <div class="card-fields" id="card-fields">
+        <label>Name on card<input type="text" name="card_name" placeholder="ALEX MORGAN" autocomplete="off"></label>
+        <label>Card number<input type="text" name="card_number" placeholder="4242 4242 4242 4242" autocomplete="off"></label>
+        <div class="form-grid">
+          <label>Exp. month<input type="number" name="exp_month" min="1" max="12" placeholder="12"></label>
+          <label>Exp. year<input type="number" name="exp_year" min="2026" max="2040" placeholder="2030"></label>
+          <label>CVC<input type="text" name="cvc" placeholder="123" autocomplete="off"></label>
+        </div>
+      </div>
+      <label class="choice-row">
+        <input type="radio" name="payment" value="cod">
+        <span class="choice-copy"><strong>Cash on delivery</strong><span class="muted">Pay in cash when your order arrives</span></span>
+      </label>
+    </section>
+
+    <section class="checkout-panel card" data-panel="4" hidden>
+      <h2>Review your order</h2>
+      <div class="review-grid">
+        <div>
+          <h3>Shipping to</h3>
+          <p id="review-address" class="muted">—</p>
+        </div>
+        <div>
+          <h3>Delivery</h3>
+          <p id="review-delivery" class="muted">Standard delivery</p>
+        </div>
+        <div>
+          <h3>Payment</h3>
+          <p id="review-payment" class="muted">Card</p>
+        </div>
+      </div>
+      <ul class="review-items">
+        {% for line in summary.lines %}
+        <li>
+          {% if line.product.primary_image %}<img src="{{ line.product.primary_image.url }}" alt="">{% endif %}
+          <span class="review-item-name">{{ line.qty }} &times; {{ line.product.name }}</span>
+          <span>{{ (line.product.effective_price * line.qty)|money }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <div class="checkout-nav">
+      <button type="button" class="btn btn-outline" id="checkout-prev" hidden>&larr; Back</button>
+      <button type="button" class="btn btn-primary" id="checkout-next">Continue &rarr;</button>
+      <button type="submit" class="btn btn-teal btn-lg" id="place-order" hidden>Place your order</button>
+      <span class="checkout-loader muted" id="checkout-loader" hidden>Placing your order…</span>
+    </div>
+  </div>
+
+  <aside class="checkout-summary card">
+    <button type="button" class="btn btn-outline btn-sm" id="place-order-2">Place your order</button>
+    <p class="muted order-hint">By placing your order you agree to ShopLinq's demo terms.</p>
+    <dl class="totals">
+      <div><dt>Items ({{ summary.count }})</dt><dd>{{ summary.subtotal|money }}</dd></div>
+      {% if summary.discount %}<div class="discount"><dt>Promo ({{ summary.promo.code }})</dt><dd>-{{ summary.discount|money }}</dd></div>{% endif %}
+      <div><dt>Shipping</dt><dd>{% if summary.shipping_fee == 0 %}FREE{% else %}{{ summary.shipping_fee|money }}{% endif %}</dd></div>
+      <div><dt>Estimated tax</dt><dd>{{ summary.tax|money }}</dd></div>
+      <div class="grand"><dt>Order total</dt><dd>{{ summary.total|money }}</dd></div>
+    </dl>
+  </aside>
+</form>
+{% endblock %}

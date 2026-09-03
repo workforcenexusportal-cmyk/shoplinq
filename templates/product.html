@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% from "_macros.html" import product_card, stars %}
+{% block title %}{{ product.name }} — ShopLinq{% endblock %}
+{% block page_id %}product{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="{{ url_for('main.index') }}">Home</a> &rsaquo;
+  {% if product.category.parent %}
+  <a href="{{ url_for('main.products', slug=product.category.parent.slug) }}">{{ product.category.parent.name }}</a> &rsaquo;
+  {% endif %}
+  <a href="{{ url_for('main.products', slug=product.category.slug) }}">{{ product.category.name }}</a>
+</nav>
+
+<div class="product-layout">
+  <section class="product-gallery">
+    <div class="gallery-main">
+      {% if product.primary_image %}
+      <img id="gallery-main-img" src="{{ product.primary_image.url }}" alt="{{ product.name }}">
+      {% endif %}
+    </div>
+    {% if product.images|length > 1 %}
+    <div class="gallery-thumbs">
+      {% for img in product.images %}
+      <button type="button" class="gallery-thumb {% if loop.first %}active{% endif %}" data-src="{{ img.url }}">
+        <img src="{{ img.url }}" alt="{{ product.name }} view {{ loop.index }}" loading="lazy">
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="product-info">
+    <h1 class="product-name">{{ product.name }}</h1>
+    <a class="product-brand" href="{{ url_for('main.products', q=product.brand) }}">Visit the {{ product.brand }} Store</a>
+    <div class="product-rating-row">
+      {{ stars(product.rating, product.rating_count) }}
+      <a href="#reviews" class="link-muted">{{ product.rating_count }} ratings</a>
+    </div>
+    <div class="product-price-block">
+      {% if product.is_deal and product.deal_price %}
+      <span class="deal-badge">Deal of the Day</span>
+      <s class="old-price">{{ product.price|money }}</s>
+      <strong class="price price-lg">{{ product.deal_price|money }}</strong>
+      <p class="save-note">You save {{ ((product.price - product.deal_price) / product.price * 100)|round|int }}%</p>
+      {% else %}
+      <strong class="price price-lg">{{ product.price|money }}</strong>
+      {% endif %}
+    </div>
+    <div class="product-desc">
+      <p>{{ product.description }}</p>
+    </div>
+    <dl class="product-specs">
+      <div><dt>Brand</dt><dd>{{ product.brand or 'ShopLinq' }}</dd></div>
+      <div><dt>Category</dt><dd>{{ product.category.name }}</dd></div>
+      <div><dt>SKU</dt><dd>SL-{{ '%04d'|format(product.id) }}</dd></div>
+    </dl>
+  </section>
+
+  <aside class="buy-box" data-product-id="{{ product.id }}">
+    <strong class="price price-lg">{{ product.effective_price|money }}</strong>
+    <p class="buy-shipping">FREE delivery on orders over $50</p>
+    {% if product.in_stock %}
+      {% if product.stock <= 5 %}
+      <p class="stock low">Only {{ product.stock }} left in stock — order soon.</p>
+      {% else %}
+      <p class="stock">In stock</p>
+      {% endif %}
+      <div class="qty-row">
+        <label for="qty-input">Qty:</label>
+        <div class="qty-stepper">
+          <button type="button" class="qty-btn" id="qty-minus" aria-label="Decrease">&minus;</button>
+          <input type="number" id="qty-input" class="qty-input" value="1" min="1" max="{{ product.stock }}">
+          <button type="button" class="qty-btn" id="qty-plus" aria-label="Increase">+</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary btn-block js-add-to-cart" id="buy-add"
+              data-product-id="{{ product.id }}">Add to Cart</button>
+      <button type="button" class="btn btn-teal btn-block" id="buy-now" data-product-id="{{ product.id }}">Buy Now</button>
+      <button type="button" class="btn btn-outline btn-block js-wishlist" data-product-id="{{ product.id }}">
+        Add to Wishlist
+      </button>
+    {% else %}
+      <p class="stock out">Currently unavailable.</p>
+      <form id="notify-form" class="notify-form">
+        <label for="notify-email">Notify me when it's back:</label>
+        <input type="email" id="notify-email" required placeholder="you@example.com">
+        <button type="submit" class="btn btn-secondary btn-block">Notify Me</button>
+      </form>
+      <p class="notify-hint" id="notify-hint" hidden></p>
+    {% endif %}
+    <ul class="buy-perks">
+      <li>Secure transaction</li>
+      <li>30-day returns</li>
+      <li>Ships from ShopLinq</li>
+    </ul>
+  </aside>
+</div>
+
+<section class="section" id="reviews">
+  <h2 class="section-title">Ratings &amp; Reviews</h2>
+  <div class="reviews-layout">
+    <div class="review-summary card">
+      <p class="review-avg">{{ '%.1f'|format(product.rating) }} {{ stars(product.rating) }}</p>
+      <p class="muted">{{ product.rating_count }} global ratings</p>
+    </div>
+    <div class="review-list">
+      {% if current_user.is_authenticated and not my_review %}
+      <form method="post" class="review-form card" action="{{ url_for('account.review', product_id=product.id) }}">
+        <h3>Write a review</h3>
+        <div class="star-picker" id="star-picker">
+          {% for i in range(1, 6) %}
+          <input type="radio" name="rating" value="{{ i }}" id="star-{{ i }}" {% if i == 5 %}checked{% endif %}>
+          <label for="star-{{ i }}" title="{{ i }} star{{ 's' if i > 1 }}">&#9733;</label>
+          {% endfor %}
+        </div>
+        <input type="text" name="title" placeholder="Headline (optional)">
+        <textarea name="body" rows="3" placeholder="What did you like or dislike?"></textarea>
+        <button type="submit" class="btn btn-primary btn-sm">Submit review</button>
+      </form>
+      {% elif not current_user.is_authenticated %}
+      <p class="muted card"><a href="{{ url_for('auth.login') }}">Sign in</a> to write a review.</p>
+      {% elif my_review %}
+      <p class="muted card">You reviewed this product — {{ stars(my_review.rating) }} “{{ my_review.title or 'Your review' }}”.
+        Submit the form below the list to see it, or edit it by posting again below.</p>
+      {% endif %}
+
+      {% for r in reviews %}
+      <article class="review card">
+        <div class="review-head">
+          {{ stars(r.rating) }}
+          <strong>{{ r.title or 'Review' }}</strong>
+        </div>
+        <p class="review-meta muted">by {{ r.customer.first_name }} on {{ r.created_date.strftime('%B %d, %Y') }}</p>
+        {% if r.body %}<p>{{ r.body }}</p>{% endif %}
+      </article>
+      {% else %}
+      <p class="muted">No reviews yet — be the first!</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section" id="qa">
+  <h2 class="section-title">Questions &amp; Answers</h2>
+  <div class="qa-layout">
+    <div class="qa-list">
+      {% for qa in qa %}
+      <article class="qa card">
+        <p class="qa-q"><strong>Q:</strong> {{ qa.question }}</p>
+        {% if qa.answer %}<p class="qa-a"><strong>A:</strong> {{ qa.answer }}</p>{% endif %}
+        <p class="muted qa-meta">asked by {{ qa.author or 'a customer' }}</p>
+      </article>
+      {% else %}
+      <p class="muted">No questions yet — ask the first one.</p>
+      {% endfor %}
+    </div>
+    {% if current_user.is_authenticated %}
+    <form method="post" class="qa-form card" action="{{ url_for('account.ask_question', product_id=product.id) }}">
+      <h3>Ask a question</h3>
+      <textarea name="question" rows="3" required placeholder="e.g. Does this come with a warranty?"></textarea>
+      <button type="submit" class="btn btn-primary btn-sm">Submit question</button>
+    </form>
+    {% else %}
+    <p class="muted card"><a href="{{ url_for('auth.login') }}">Sign in</a> to ask a question.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% if related %}
+<section class="section">
+  <h2 class="section-title">Related products</h2>
+  <div class="product-grid">
+    {% for p in related %}{{ product_card(p) }}{% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Categories — Admin — ShopLinq{% endblock %}
+{% block page_id %}admin-categories{% endblock %}
+
+{% block subnav %}
+<div class="subnav admin-subnav"><div class="container">
+  <a href="{{ url_for('admin.index') }}">Dashboard</a>
+  <a href="{{ url_for('admin.products') }}">Products</a>
+  <a class="active" href="{{ url_for('admin.categories') }}">Categories</a>
+  <a href="{{ url_for('admin.orders') }}">Orders</a>
+  <a href="{{ url_for('admin.analytics') }}">Analytics</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Categories</h1>
+
+<div class="two-col-layout">
+  <section class="card">
+    <h2>Category tree</h2>
+    {% for root in roots %}
+    <div class="cat-node">
+      <strong>{{ root.name }}</strong>
+      <span class="muted">({{ root.products.count() }} products)</span>
+      <a class="link-muted" href="{{ url_for('admin.categories', edit=root.id) }}">edit</a>
+      <form method="post" action="{{ url_for('admin.category_delete', cat_id=root.id) }}" class="inline-form">
+        <button type="submit" class="link-btn">delete</button>
+      </form>
+      <ul class="cat-children">
+        {% for child in root.children %}
+        <li>
+          {{ child.name }} <span class="muted">({{ child.products.count() }})</span>
+          <a class="link-muted" href="{{ url_for('admin.categories', edit=child.id) }}">edit</a>
+          <form method="post" action="{{ url_for('admin.category_delete', cat_id=child.id) }}" class="inline-form">
+            <button type="submit" class="link-btn">delete</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% else %}
+    <p class="muted">No categories yet.</p>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <h2>{{ 'Edit category' if editing else 'Add a category' }}</h2>
+    <form method="post" class="stack-form">
+      {% if editing %}<input type="hidden" name="category_id" value="{{ editing.id }}">{% endif %}
+      <label>Name<input type="text" name="name" required value="{{ editing.name if editing else '' }}"></label>
+      <label>Parent category
+        <select name="parent_id">
+          <option value="">— none (top level) —</option>
+          {% for root in roots %}
+            {% if not editing or editing.id != root.id %}
+          <option value="{{ root.id }}" {% if editing and editing.parent_id == root.id %}selected{% endif %}>{{ root.name }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="btn btn-primary">{{ 'Save changes' if editing else 'Add category' }}</button>
+      {% if editing %}<a class="link-muted" href="{{ url_for('admin.categories') }}">Cancel edit</a>{% endif %}
+    </form>
+  </section>
+</div>
+{% endblock %}

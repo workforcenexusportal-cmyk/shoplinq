@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Orders — Admin — ShopLinq{% endblock %}
+{% block page_id %}admin-orders{% endblock %}
+
+{% block subnav %}
+<div class="subnav admin-subnav"><div class="container">
+  <a href="{{ url_for('admin.index') }}">Dashboard</a>
+  <a href="{{ url_for('admin.products') }}">Products</a>
+  <a href="{{ url_for('admin.categories') }}">Categories</a>
+  <a class="active" href="{{ url_for('admin.orders') }}">Orders</a>
+  <a href="{{ url_for('admin.analytics') }}">Analytics</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Orders</h1>
+
+<div class="status-filter">
+  <a class="badge {% if not current_status %}status-current{% endif %}" href="{{ url_for('admin.orders') }}">All</a>
+  {% for status, label in statuses.items() %}
+  <a class="badge status-{{ status }}" href="{{ url_for('admin.orders', status=status) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<table class="table">
+  <thead><tr><th>Order #</th><th>Customer</th><th>Placed</th><th>Items</th><th>Total</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for order in orders %}
+    <tr>
+      <td class="order-number">{{ order.order_number }}</td>
+      <td>{{ order.customer.name }}<br><span class="muted">{{ order.customer.email }}</span></td>
+      <td>{{ order.placed_date.strftime('%b %d, %Y') }}</td>
+      <td>{{ order.items|length }}</td>
+      <td>{{ order.total|money }}</td>
+      <td><span class="badge status-{{ order.status }}">{{ order.status_label }}</span>
+        {% if order.payment %}<br><span class="muted">{{ order.payment.method }} &middot; {{ order.payment.status }}</span>{% endif %}</td>
+      <td><a class="btn btn-outline btn-sm" href="{{ url_for('admin.order_detail', order_id=order.id) }}">Manage</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="muted">No orders found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if pagination.pages > 1 %}
+<nav class="pagination">
+  {% for n in pagination.iter_pages() %}
+    {% if n %}<a class="page-link {% if n == pagination.page %}current{% endif %}"
+      href="{{ url_for('admin.orders', status=current_status, page=n) }}">{{ n }}</a>
+    {% else %}<span class="page-gap">&hellip;</span>{% endif %}
+  {% endfor %}
+</nav>
+{% endif %}
+{% endblock %}

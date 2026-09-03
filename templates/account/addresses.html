@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Your Addresses — ShopLinq{% endblock %}
+{% block page_id %}addresses{% endblock %}
+
+{% block subnav %}
+<div class="subnav"><div class="container">
+  <a href="{{ url_for('account.dashboard') }}">Overview</a>
+  <a href="{{ url_for('account.orders') }}">Your Orders</a>
+  <a class="active" href="{{ url_for('account.addresses') }}">Addresses</a>
+  <a href="{{ url_for('account.payment_methods') }}">Payment Methods</a>
+  <a href="{{ url_for('account.wishlist') }}">Wishlist</a>
+  <a href="{{ url_for('account.profile') }}">Login &amp; Security</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Your Addresses</h1>
+
+<div class="two-col-layout">
+  <section class="address-list">
+    {% for addr in addresses %}
+    <div class="card address-card">
+      <p class="badge">{{ addr.label }}{% if addr.is_default %} &middot; Default{% endif %}</p>
+      <p><strong>{{ addr.full_name }}</strong><br>
+        {{ addr.one_line() }}<br>{{ addr.country }}
+        {% if addr.phone %} &middot; {{ addr.phone }}{% endif %}</p>
+      <div class="card-actions">
+        <a class="btn btn-outline btn-sm" href="{{ url_for('account.addresses', edit=addr.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('account.address_delete', address_id=addr.id) }}">
+          <button type="submit" class="btn btn-secondary btn-sm">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h2>No addresses saved</h2>
+      <p>Add an address to speed up checkout.</p>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <h2>{{ 'Edit address' if editing else 'Add a new address' }}</h2>
+    <form method="post" class="stack-form">
+      {% if editing %}<input type="hidden" name="address_id" value="{{ editing.id }}">{% endif %}
+      <div class="form-grid">
+        <label>Label<input type="text" name="label" placeholder="Home" value="{{ editing.label if editing else '' }}"></label>
+        <label>Full name<input type="text" name="full_name" required value="{{ editing.full_name if editing else '' }}"></label>
+      </div>
+      <label>Street address<input type="text" name="line1" required value="{{ editing.line1 if editing else '' }}"></label>
+      <label>Apartment, suite, etc. (optional)<input type="text" name="line2" value="{{ editing.line2 if editing else '' }}"></label>
+      <div class="form-grid">
+        <label>City<input type="text" name="city" required value="{{ editing.city if editing else '' }}"></label>
+        <label>State / Region<input type="text" name="state" value="{{ editing.state if editing else '' }}"></label>
+      </div>
+      <div class="form-grid">
+        <label>ZIP / Postal code<input type="text" name="postal_code" required value="{{ editing.postal_code if editing else '' }}"></label>
+        <label>Country<input type="text" name="country" value="{{ editing.country if editing else 'United States' }}"></label>
+      </div>
+      <label>Phone<input type="text" name="phone" value="{{ editing.phone if editing else '' }}"></label>
+      <label class="checkbox-row"><input type="checkbox" name="is_default" value="1" {% if editing and editing.is_default %}checked{% endif %}> Set as default address</label>
+      <button type="submit" class="btn btn-primary">{{ 'Save changes' if editing else 'Add address' }}</button>
+      {% if editing %}<a class="link-muted" href="{{ url_for('account.addresses') }}">Cancel edit</a>{% endif %}
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Track order {{ order.order_number }} — ShopLinq{% endblock %}
+{% block page_id %}tracking{% endblock %}
+
+{% block subnav %}
+<div class="subnav"><div class="container">
+  <a href="{{ url_for('account.dashboard') }}">Overview</a>
+  <a class="active" href="{{ url_for('account.orders') }}">Your Orders</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb"><a href="{{ url_for('account.order_detail', order_id=order.id) }}">&larr; Order details</a></nav>
+
+<h1 class="page-title">Tracking order {{ order.order_number }}</h1>
+
+{% set history = order.shipping.history %}
+{% set flow = ['placed','packed','shipped','out_for_delivery','delivered'] %}
+
+<div class="track-layout">
+  <section class="card track-card">
+    <p class="track-meta">
+      <strong>Tracking number:</strong> {{ order.shipping.tracking_number }}<br>
+      <strong>Carrier:</strong> {{ order.shipping.carrier }}<br>
+      <strong>Estimated delivery:</strong>
+      {{ order.shipping.estimated_delivery.strftime('%A, %B %d, %Y') if order.shipping.estimated_delivery else '—' }}
+    </p>
+
+    {% if order.status == 'cancelled' %}
+    <p class="stock out">This order was cancelled.</p>
+    {% else %}
+    <ol class="timeline">
+      {% for step in flow %}
+        {% set record = history | selectattr('status', 'equalto', step) | first %}
+        {% set state = 'done' if record else ('current' if step == order.status else 'todo') %}
+        <li class="timeline-step {{ state }}">
+          <span class="timeline-dot" aria-hidden="true"></span>
+          <span class="timeline-body">
+            <strong>{{ {'placed':'Order placed','packed':'Packed','shipped':'Shipped','out_for_delivery':'Out for delivery','delivered':'Delivered'}[step] }}</strong>
+            {% if record %}<span class="muted">{{ record.at[:16]|replace('T',' ') }} UTC</span>{% elif state == 'current' %}<span class="muted">In progress</span>{% else %}<span class="muted">Pending</span>{% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+  </section>
+
+  <aside class="track-items card">
+    <h2>Items in this shipment</h2>
+    {% for item in order.items %}
+    <div class="order-item-line">
+      {% if item.image_url %}<img src="{{ item.image_url }}" alt="">{% endif %}
+      <div>
+        <a class="card-title" href="{{ url_for('main.product', slug=item.product_slug) }}">{{ item.product_name }}</a>
+        <p class="muted">Qty: {{ item.quantity }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </aside>
+</div>
+{% endblock %}

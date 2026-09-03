@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Your Account — ShopLinq{% endblock %}
+{% block page_id %}account{% endblock %}
+
+{% block subnav %}
+<div class="subnav"><div class="container">
+  <a class="active" href="{{ url_for('account.dashboard') }}">Overview</a>
+  <a href="{{ url_for('account.orders') }}">Your Orders</a>
+  <a href="{{ url_for('account.addresses') }}">Addresses</a>
+  <a href="{{ url_for('account.payment_methods') }}">Payment Methods</a>
+  <a href="{{ url_for('account.wishlist') }}">Wishlist</a>
+  <a href="{{ url_for('account.profile') }}">Login &amp; Security</a>
+  {% if current_user.is_admin %}<a href="{{ url_for('admin.index') }}">Admin</a>{% endif %}
+</div></div>
+{% endblock %}
+
+{% block content %}
+<div class="account-grid">
+  <section class="account-card card account-wide">
+    <h2 class="account-hello">Hi, {{ current_user.first_name }}!</h2>
+    <p class="muted">Welcome to your ShopLinq account{% if current_user.is_admin %} — you also have <a href="{{ url_for('admin.index') }}">admin access</a> from here{% endif %}.</p>
+    <div class="stat-tiles">
+      <div class="stat"><span class="stat-num">{{ my_stats.orders }}</span><span>orders</span></div>
+      <div class="stat"><span class="stat-num">{{ my_stats.items }}</span><span>items purchased</span></div>
+      <div class="stat"><span class="stat-num">{{ my_stats.total_spent|money }}</span><span>total spent</span></div>
+      <div class="stat"><span class="stat-num">{{ current_user.wishlist_items.count() }}</span><span>wishlist items</span></div>
+      <div class="stat"><span class="stat-num">{{ current_user.addresses|length }}</span><span>saved addresses</span></div>
+    </div>
+    {% if my_stats.top_category %}
+    <p class="muted">Most-ordered category: <strong>{{ my_stats.top_category }}</strong>
+      {% if my_stats.top_product %} &middot; favorite product: <strong>{{ my_stats.top_product }}</strong>{% endif %}</p>
+    {% endif %}
+  </section>
+
+  <section class="account-card card">
+    <h2>Default address</h2>
+    {% if default_address %}
+    <p><strong>{{ default_address.full_name }}</strong><br>
+      {{ default_address.one_line() }}<br>
+      {{ default_address.country }}{% if default_address.phone %} &middot; {{ default_address.phone }}{% endif %}</p>
+    {% else %}
+    <p class="muted">No address saved yet.</p>
+    {% endif %}
+    <a class="btn btn-outline btn-sm" href="{{ url_for('account.addresses') }}">Manage addresses</a>
+  </section>
+
+  <section class="account-card card">
+    <h2>Quick actions</h2>
+    <p class="account-head"><a class="btn btn-secondary btn-sm" href="{{ url_for('main.products') }}">Browse products</a>
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('account.wishlist') }}">View wishlist</a>
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('account.payment_methods') }}">Payment methods</a></p>
+    <p class="muted">Tip: use promo codes <strong>SAVE10</strong>, <strong>WELCOME15</strong> or <strong>VIP20</strong> at checkout.</p>
+  </section>
+
+  <section class="account-card card account-wide">
+    <div class="account-head">
+      <h2>Recent orders</h2>
+      <a class="link-muted" href="{{ url_for('account.orders') }}">View all &rarr;</a>
+    </div>
+    {% for order in recent_orders %}
+    <a class="order-row" href="{{ url_for('account.order_detail', order_id=order.id) }}">
+      <span class="order-number">{{ order.order_number }}</span>
+      <span class="muted">{{ order.placed_date.strftime('%b %d, %Y') }}</span>
+      <span class="muted">{{ order.items|length }} item{{ 's' if order.items|length != 1 }}</span>
+      <span class="badge status-{{ order.status }}">{{ order.status_label }}</span>
+      <span class="order-total">{{ order.total|money }}</span>
+    </a>
+    {% else %}
+    <p class="muted">No orders yet — <a href="{{ url_for('main.products') }}">start shopping</a>.</p>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

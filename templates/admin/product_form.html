@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if product else 'New' }} product — Admin — ShopLinq{% endblock %}
+{% block page_id %}admin-product-form{% endblock %}
+
+{% block subnav %}
+<div class="subnav admin-subnav"><div class="container">
+  <a href="{{ url_for('admin.index') }}">Dashboard</a>
+  <a class="active" href="{{ url_for('admin.products') }}">Products</a>
+  <a href="{{ url_for('admin.categories') }}">Categories</a>
+  <a href="{{ url_for('admin.orders') }}">Orders</a>
+  <a href="{{ url_for('admin.analytics') }}">Analytics</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">{{ 'Edit product' if product else 'New product' }}</h1>
+
+<section class="card stack-form" style="max-width: 720px;">
+  <form method="post">
+    <label>Name<input type="text" name="name" required value="{{ product.name if product else '' }}"></label>
+    <div class="form-grid">
+      <label>Brand<input type="text" name="brand" value="{{ product.brand if product else '' }}"></label>
+      <label>Category
+        <select name="category_id" required>
+          <option value="">— choose —</option>
+          {% for id, label in categories %}
+          <option value="{{ id }}" {% if product and product.category_id == id %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <div class="form-grid">
+      <label>Price ($)<input type="number" name="price" step="0.01" min="0.01" required
+        value="{{ product.price if product else '' }}"></label>
+      <label>Deal price ($) <span class="muted">optional</span><input type="number" name="deal_price" step="0.01" min="0"
+        value="{{ product.deal_price if product and product.deal_price else '' }}"></label>
+      <label>Stock<input type="number" name="stock" min="0" required
+        value="{{ product.stock if product else 10 }}"></label>
+    </div>
+    <label>Description<textarea name="description" rows="4">{{ product.description if product else '' }}</textarea></label>
+    <label>Image URLs — one per line; the first is the main image
+      <textarea name="image_urls" rows="3" placeholder="/static/images/phone-1.svg">{{ product.images|map(attribute='url')|join('\n') if product else '' }}</textarea>
+    </label>
+    <label class="checkbox-row"><input type="checkbox" name="is_deal" value="1" {% if product and product.is_deal %}checked{% endif %}> Deal of the Day</label>
+    <label class="checkbox-row"><input type="checkbox" name="is_featured" value="1" {% if product and product.is_featured %}checked{% endif %}> Featured</label>
+    <div class="empty-actions">
+      <button type="submit" class="btn btn-primary">{{ 'Save changes' if product else 'Create product' }}</button>
+      <a class="btn btn-outline" href="{{ url_for('admin.products') }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

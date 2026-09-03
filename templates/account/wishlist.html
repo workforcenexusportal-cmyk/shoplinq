@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import product_card %}
+{% block title %}Your Wishlist — ShopLinq{% endblock %}
+{% block page_id %}wishlist{% endblock %}
+
+{% block subnav %}
+<div class="subnav"><div class="container">
+  <a href="{{ url_for('account.dashboard') }}">Overview</a>
+  <a href="{{ url_for('account.orders') }}">Your Orders</a>
+  <a href="{{ url_for('account.addresses') }}">Addresses</a>
+  <a href="{{ url_for('account.payment_methods') }}">Payment Methods</a>
+  <a class="active" href="{{ url_for('account.wishlist') }}">Wishlist</a>
+  <a href="{{ url_for('account.profile') }}">Login &amp; Security</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Your Wishlist</h1>
+
+{% if items %}
+<div class="product-grid">
+  {% for item in items %}
+  <div class="wishlist-cell">
+    {{ product_card(item.product) }}
+    <div class="wishlist-actions">
+      <form method="post" action="{{ url_for('account.wishlist_move_to_cart', product_id=item.product_id) }}">
+        <button type="submit" class="btn btn-primary btn-sm">Move to cart</button>
+      </form>
+      <form method="post" action="{{ url_for('account.wishlist_remove', product_id=item.product_id) }}">
+        <button type="submit" class="btn btn-secondary btn-sm">Remove</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <h2>Your wishlist is empty</h2>
+  <p>Tap the &#9825; on any product to save it here for later.</p>
+  <a class="btn btn-primary" href="{{ url_for('main.products') }}">Discover products</a>
+</div>
+{% endif %}
+{% endblock %}

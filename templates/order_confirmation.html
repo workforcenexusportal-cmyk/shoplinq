@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Order confirmed — ShopLinq{% endblock %}
+{% block page_id %}confirmation{% endblock %}
+
+{% block content %}
+<div class="confirmation card">
+  <div class="confirm-check" aria-hidden="true">&#10003;</div>
+  <h1>Thank you, your order is placed!</h1>
+  <p class="confirm-sub">A confirmation email has been sent to <strong>{{ order.customer.email }}</strong>.</p>
+
+  <div class="confirm-meta">
+    <div><dt>Order number</dt><dd><strong>{{ order.order_number }}</strong></dd></div>
+    <div><dt>Tracking number</dt><dd>{{ order.shipping.tracking_number }}</dd></div>
+    <div><dt>Estimated delivery</dt><dd>{{ order.shipping.estimated_delivery.strftime('%A, %B %d, %Y') if order.shipping.estimated_delivery else '—' }}</dd></div>
+    <div><dt>Order total</dt><dd><strong>{{ order.total|money }}</strong></dd></div>
+  </div>
+
+  <ul class="review-items">
+    {% for item in order.items %}
+    <li>
+      {% if item.image_url %}<img src="{{ item.image_url }}" alt="">{% endif %}
+      <span class="review-item-name">{{ item.quantity }} &times; {{ item.product_name }}</span>
+      <span>{{ (item.unit_price * item.quantity)|money }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <div class="empty-actions">
+    <a class="btn btn-primary" href="{{ url_for('account.track', order_id=order.id) }}">Track your order</a>
+    <a class="btn btn-outline" href="{{ url_for('main.products') }}">Continue shopping</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Analytics — Admin — ShopLinq{% endblock %}
+{% block page_id %}admin-analytics{% endblock %}
+
+{% block subnav %}
+<div class="subnav admin-subnav"><div class="container">
+  <a href="{{ url_for('admin.index') }}">Dashboard</a>
+  <a href="{{ url_for('admin.products') }}">Products</a>
+  <a href="{{ url_for('admin.categories') }}">Categories</a>
+  <a href="{{ url_for('admin.orders') }}">Orders</a>
+  <a class="active" href="{{ url_for('admin.analytics') }}">Analytics</a>
+</div></div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Sales analytics</h1>
+
+{% set ordered = monthly|reverse|list %}
+{% set max_rev = (ordered|map(attribute='revenue')|max if ordered else 0) or 1 %}
+
+<div class="analytics-grid">
+  <section class="card">
+    <h2>Monthly revenue</h2>
+    {% if ordered %}
+    <div class="chart-bars">
+      {% for m in ordered %}
+      <div class="chart-col">
+        <span class="chart-value">{{ m.revenue|money }}</span>
+        <div class="chart-fill" style="height: {{ ((m.revenue or 0) / max_rev * 100)|round(1) }}%"></div>
+        <span class="chart-label">{{ m.month }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">No sales data yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Month-by-month breakdown</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Month</th><th>Orders</th><th>Items sold</th><th>Revenue</th></tr></thead>
+        <tbody>
+          {% for m in ordered %}
+          <tr>
+            <td>{{ m.month }}</td>
+            <td>{{ m.orders }}</td>
+            <td>{{ units_by_month.get(m.month, 0) }}</td>
+            <td>{{ m.revenue|money }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="muted">No orders yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Top-selling products (all time)</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>#</th><th>Product</th><th>Units sold</th><th>Revenue</th><th>Rating</th></tr></thead>
+        <tbody>
+          {% for row in top_products %}
+          {% set p = row[0] %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td class="invoice-item">
+              {% if p.primary_image %}<img src="{{ p.primary_image.url }}" alt="">{% endif %}
+              <a href="{{ url_for('main.product', slug=p.slug) }}">{{ p.name }}</a>
+            </td>
+            <td><strong>{{ row[1] }}</strong></td>
+            <td>{{ row[2]|money }}</td>
+            <td>{{ '%.1f'|format(p.rating) }}★ ({{ p.rating_count }})</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="muted">No sales yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Reviews</h2>
+    <p class="muted">
+      Catalog average: <strong>{{ '%.2f'|format(avg_catalog_rating or 0) }}★</strong> &middot;
+      {% for star in [5,4,3,2,1] %}
+        {{ star }}★: <strong>{{ rating_dist.get(star, 0) }}</strong>{{ "," if not loop.last }}
+      {% endfor %}
+    </p>
+    <h3>Recent reviews</h3>
+    {% for r in recent_reviews %}
+    <div class="review-head" style="margin-top:8px;">
+      <span class="stars">{% for i in range(1,6) %}<span class="star{% if i <= r.rating %} filled{% endif %}">★</span>{% endfor %}</span>
+      <a href="{{ url_for('main.product', slug=r.product.slug) }}">{{ r.product.name[:40] }}</a>
+      <span class="muted">{{ r.title or '' }}</span>
+    </div>
+    <p class="muted">by {{ r.customer.first_name }}, {{ r.created_date.strftime('%b %d, %Y') }}{% if r.body %} — “{{ r.body[:90] }}{{ '…' if r.body|length > 90 }}”{% endif %}</p>
+    {% else %}
+    <p class="muted">No reviews yet.</p>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

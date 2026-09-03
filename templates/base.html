@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ShopLinq — Everything you need, delivered{% endblock %}</title>
+  <meta name="description" content="ShopLinq — your online marketplace for electronics, home, fashion and more.">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body data-page="{% block page_id %}home{% endblock %}">
+
+<header class="topbar">
+  <div class="container topbar-inner">
+    <a class="logo" href="{{ url_for('main.index') }}" aria-label="ShopLinq home">
+      Shop<span>Linq</span><small>.market</small>
+    </a>
+
+    <form class="search" action="{{ url_for('main.products') }}" method="get" role="search" autocomplete="off">
+      <input id="search-input" type="text" name="q" placeholder="Search products, brands and more"
+             value="{{ request.args.get('q', '') }}" aria-label="Search ShopLinq">
+      <button type="submit" class="search-btn" aria-label="Search">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg>
+      </button>
+      <div class="search-suggest" id="search-suggest" hidden></div>
+    </form>
+
+    <nav class="topbar-actions" aria-label="Account and cart">
+      <div class="dropdown" id="account-dropdown">
+        <button type="button" class="topbar-link dropdown-toggle">
+          <span class="top-hello">{% if current_user.is_authenticated %}Hello, {{ current_user.first_name }}{% else %}Hello, sign in{% endif %}</span>
+          <span class="top-sub">Account &#9662;</span>
+        </button>
+        <div class="dropdown-menu" hidden>
+          {% if current_user.is_authenticated %}
+            <a href="{{ url_for('account.dashboard') }}">Your Account</a>
+            <a href="{{ url_for('account.orders') }}">Your Orders</a>
+            <a href="{{ url_for('account.wishlist') }}">Your Wishlist</a>
+            {% if current_user.is_admin %}<a href="{{ url_for('admin.index') }}">Admin Dashboard</a>{% endif %}
+            <form method="post" action="{{ url_for('auth.logout') }}">
+              <button type="submit" class="dropdown-signout">Sign Out</button>
+            </form>
+          {% else %}
+            <a href="{{ url_for('auth.login') }}">Sign In</a>
+            <a href="{{ url_for('auth.register') }}">Create Account</a>
+            <a href="{{ url_for('account.orders') }}">Your Orders</a>
+          {% endif %}
+        </div>
+      </div>
+      <a class="topbar-link" href="{{ url_for('account.orders') }}">
+        <span class="top-hello">Returns</span>
+        <span class="top-sub">&amp; Orders</span>
+      </a>
+      <a class="topbar-link topbar-cart" href="{{ url_for('cart.view') }}">
+        <span class="cart-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 4h2l2.6 11.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.2L21 8H6"/><circle cx="10" cy="20" r="1.4"/><circle cx="17.5" cy="20" r="1.4"/></svg>
+          <span class="cart-badge" id="cart-badge">{{ cart_count }}</span>
+        </span>
+        <span class="top-sub">Cart</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<nav class="catbar" aria-label="Categories">
+  <div class="container catbar-inner">
+    <a href="{{ url_for('main.products') }}">All Products</a>
+    {% for c in nav_categories %}
+    <a href="{{ url_for('main.products', slug=c.slug) }}">{{ c.name }}</a>
+    {% endfor %}
+  </div>
+</nav>
+
+{% block subnav %}{% endblock %}
+
+<main class="container main-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flashes">
+      {% for category, message in messages %}
+      <div class="flash flash-{{ category }}">
+        <span>{{ message }}</span>
+        <button type="button" class="flash-close" aria-label="Dismiss">&times;</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <p class="logo">Shop<span>Linq</span></p>
+      <p class="footer-tag">Everything you need, delivered.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Shop</h4>
+      {% for c in nav_categories[:4] %}
+      <a href="{{ url_for('main.products', slug=c.slug) }}">{{ c.name }}</a>
+      {% endfor %}
+    </div>
+    <div class="footer-col">
+      <h4>Your Account</h4>
+      <a href="{{ url_for('account.dashboard') }}">Your Account</a>
+      <a href="{{ url_for('account.orders') }}">Your Orders</a>
+      <a href="{{ url_for('account.wishlist') }}">Wishlist</a>
+      <a href="{{ url_for('cart.view') }}">Cart</a>
+    </div>
+    <div class="footer-col">
+      <h4>Help</h4>
+      <a href="#">Shipping &amp; Delivery</a>
+      <a href="#">Returns Policy</a>
+      <a href="#">Contact Us</a>
+    </div>
+  </div>
+  <div class="container footer-bottom">
+    <p>&copy; 2026 ShopLinq. Demo store built with Flask.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
