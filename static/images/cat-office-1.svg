@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="ShopLinq office supplies">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b86a6"/><stop offset="1" stop-color="#5b88d6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1000" height="1000" fill="url(#g)"/>
+  <circle cx="150" cy="190" r="150" fill="#ffffff" opacity="0.08"/>
+  <circle cx="840" cy="780" r="230" fill="#ffffff" opacity="0.06"/>
+  <circle cx="840" cy="180" r="60" fill="#ffffff" opacity="0.10"/>
+  <rect x="120" y="120" width="760" height="760" rx="60" fill="#ffffff" opacity="0.14"/>
+  <text x="500" y="400" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="92" font-weight="700" fill="#ffffff">ShopLinq</text>
+  <text x="500" y="470" text-anchor="middle" font-family="Verdana, sans-serif"
+        font-size="36" fill="#ffffff" opacity="0.85">office supplies</text>
+</svg>

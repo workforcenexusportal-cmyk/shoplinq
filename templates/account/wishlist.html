@@ -24,9 +24,11 @@
     {{ product_card(item.product) }}
     <div class="wishlist-actions">
       <form method="post" action="{{ url_for('account.wishlist_move_to_cart', product_id=item.product_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-primary btn-sm">Move to cart</button>
       </form>
       <form method="post" action="{{ url_for('account.wishlist_remove', product_id=item.product_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-secondary btn-sm">Remove</button>
       </form>
     </div>

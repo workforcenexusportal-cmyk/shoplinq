@@ -1,8 +1,9 @@
 """ShopLinq application factory."""
 import os
+import secrets
 
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, abort, jsonify, request, session
 
 from extensions import db, login_manager
 
@@ -16,11 +17,35 @@ def create_app():
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["STRIPE_SECRET_KEY"] = os.environ.get("STRIPE_SECRET_KEY", "")
     app.config["STRIPE_PUBLISHABLE_KEY"] = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+    app.config["DEMO_MODE"] = os.environ.get("DEMO_MODE", "1") != "0"
 
     db.init_app(app)
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     login_manager.login_message = "Please sign in to continue."
+
+    def csrf_token():
+        if "csrf_token" not in session:
+            session["csrf_token"] = secrets.token_hex(16)
+        return session["csrf_token"]
+
+    app.jinja_env.globals["csrf_token"] = csrf_token
+
+    @app.before_request
+    def csrf_protect():
+        if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+            return None
+        sent = (request.headers.get("X-CSRF-Token")
+                or request.form.get("csrf_token"))
+        if sent and sent == session.get("csrf_token"):
+            return None
+        if request.path.startswith("/api/"):
+            return jsonify({
+                "ok": False,
+                "message": "Your session changed — please refresh the page and try again.",
+            }), 403
+        abort(400, description="Invalid or missing CSRF token — please go back, "
+              "reload the page and try again.")
 
     from blueprints.main import main_bp
     from blueprints.auth import auth_bp
@@ -44,11 +69,9 @@ def create_app():
 
     @app.context_processor
     def inject_globals():
-        from services import get_cart_count
+        from services import get_cart_count, get_nav_tree
         try:
-            nav_categories = (
-                Category.query.filter_by(parent_id=None).order_by(Category.name).all()
-            )
+            nav_categories = get_nav_tree()
         except Exception:
             nav_categories = []
         from flask import request, url_for

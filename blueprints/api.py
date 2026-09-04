@@ -1,8 +1,11 @@
-"""JSON endpoints powering the shared script.js (AJAX) interactions."""
+"""JSON endpoints powering the shared script.js (AJAX) interactions.
+
+All handlers coerce and validate their input — malformed payloads get a 400,
+never a 500.
+"""
 from flask import Blueprint, jsonify, request, session
 from flask_login import current_user
 
-from blueprints.cart import _summary
 from extensions import db
 from models import Product, PromoCode, StockNotification, WishlistItem
 from services import (
@@ -11,6 +14,14 @@ from services import (
 )
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
+
+
+def _int_or_none(value):
+    """Strict int coercion: '12' -> 12, None/'abc'/12.7 -> None."""
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
 
 
 def summary_payload(delivery=None, promo=None):
@@ -32,14 +43,13 @@ def summary_payload(delivery=None, promo=None):
 @api_bp.route("/search/suggest")
 def suggest():
     q = (request.args.get("q") or "").strip()
-    if len(q) < 2:
+    if len(q) < 2 or len(q) > 100:
         return jsonify({"results": []})
     like = f"%{q}%"
     rows = (
         Product.query.filter(
             db.or_(Product.name.ilike(like), Product.brand.ilike(like))
         )
-        .filter(Product.stock >= 0)
         .order_by(Product.rating_count.desc())
         .limit(8)
         .all()
@@ -50,7 +60,7 @@ def suggest():
             "brand": p.brand,
             "url": f"/product/{p.slug}",
             "price": p.effective_price,
-            "image": p.primary_image.url if p.primary_image else None,
+            "image": p.image_url,
         } for p in rows]
     })
 
@@ -58,8 +68,13 @@ def suggest():
 @api_bp.route("/cart/add", methods=["POST"])
 def cart_add():
     data = request.get_json(silent=True) or request.form
-    product, err = add_to_cart(current_user, data.get("product_id"),
-                               data.get("quantity", 1))
+    product_id = _int_or_none(data.get("product_id"))
+    quantity = _int_or_none(data.get("quantity", 1))
+    if product_id is None:
+        return jsonify({"ok": False, "message": "Invalid product."}), 400
+    if quantity is None or quantity < 1:
+        quantity = 1
+    product, err = add_to_cart(current_user, product_id, quantity)
     if err:
         return jsonify({"ok": False, "message": err}), 400
     payload = summary_payload()
@@ -70,24 +85,62 @@ def cart_add():
 @api_bp.route("/cart/update", methods=["POST"])
 def cart_update():
     data = request.get_json(silent=True) or request.form
-    product_id = data.get("product_id")
-    ok, err = update_cart_quantity(current_user, product_id, data.get("quantity", 0))
+    product_id = _int_or_none(data.get("product_id"))
+    quantity = _int_or_none(data.get("quantity", 0))
+    if product_id is None or quantity is None:
+        return jsonify({"ok": False,
+                        "message": "Invalid product or quantity."}), 400
+    ok, err = update_cart_quantity(current_user, product_id, quantity)
     if err:
         return jsonify({"ok": False, "message": err}), 400
     payload = summary_payload()
-    product = db.session.get(Product, int(product_id))
-    qty = int(data.get("quantity", 0))
-    payload["row_total"] = round(product.effective_price * qty, 2) if product and qty else 0
+    qty = max(quantity, 0)
+    if qty:
+        product = db.session.get(Product, product_id)
+        payload["row_total"] = (
+            round(product.effective_price * qty, 2) if product else 0)
+    else:
+        payload["row_total"] = 0
     return jsonify(payload)
 
 
 @api_bp.route("/cart/remove", methods=["POST"])
 def cart_remove():
     data = request.get_json(silent=True) or request.form
-    ok, err = remove_from_cart(current_user, data.get("product_id"))
+    product_id = _int_or_none(data.get("product_id"))
+    if product_id is None:
+        return jsonify({"ok": False, "message": "Invalid product."}), 400
+    ok, err = remove_from_cart(current_user, product_id)
     if err:
         return jsonify({"ok": False, "message": err}), 400
     return jsonify(summary_payload())
+
+
+@api_bp.route("/cart/save-later", methods=["POST"])
+def cart_save_later():
+    """Atomically move an item from the cart to the wishlist."""
+    if not current_user.is_authenticated:
+        return jsonify({"ok": False, "login_required": True,
+                        "message": "Please sign in to save items for later."}), 401
+    data = request.get_json(silent=True) or request.form
+    product_id = _int_or_none(data.get("product_id"))
+    if product_id is None:
+        return jsonify({"ok": False, "message": "Invalid product."}), 400
+    product = db.session.get(Product, product_id)
+    if not product:
+        return jsonify({"ok": False, "message": "Product not found."}), 404
+    exists = current_user.wishlist_items.filter_by(
+        product_id=product.id).first()
+    if not exists:
+        db.session.add(WishlistItem(customer_id=current_user.id,
+                                    product_id=product.id))
+        db.session.commit()
+    ok, err = remove_from_cart(current_user, product_id)
+    if err:
+        return jsonify({"ok": False, "message": err}), 400
+    payload = summary_payload()
+    payload["message"] = "Saved to your wishlist."
+    return jsonify(payload)
 
 
 @api_bp.route("/promo", methods=["POST"])
@@ -122,7 +175,10 @@ def wishlist_toggle():
         return jsonify({"ok": False, "message": "Sign in to use your wishlist.",
                         "login_required": True}), 401
     data = request.get_json(silent=True) or request.form
-    product = db.session.get(Product, int(data.get("product_id") or 0))
+    product_id = _int_or_none(data.get("product_id"))
+    if product_id is None:
+        return jsonify({"ok": False, "message": "Invalid product."}), 400
+    product = db.session.get(Product, product_id)
     if not product:
         return jsonify({"ok": False, "message": "Product not found."}), 404
     item = current_user.wishlist_items.filter_by(product_id=product.id).first()
@@ -142,9 +198,19 @@ def wishlist_toggle():
 def notify():
     data = request.get_json(silent=True) or request.form
     email = (data.get("email") or "").strip().lower()
-    product = db.session.get(Product, int(data.get("product_id") or 0))
-    if not product or "@" not in email:
+    product_id = _int_or_none(data.get("product_id"))
+    if product_id is None:
+        return jsonify({"ok": False, "message": "Invalid product."}), 400
+    if "@" not in email or len(email) > 255:
         return jsonify({"ok": False, "message": "Please enter a valid email."}), 400
+    product = db.session.get(Product, product_id)
+    if not product:
+        return jsonify({"ok": False, "message": "Product not found."}), 404
+    already = StockNotification.query.filter_by(
+        product_id=product.id, email=email).first()
+    if already:
+        return jsonify({"ok": True,
+                        "message": "You're already on the list for this product."})
     db.session.add(StockNotification(product_id=product.id, email=email))
     db.session.commit()
     send_email(email, "We'll let you know when it's back",

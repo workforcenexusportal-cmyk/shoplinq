@@ -21,17 +21,19 @@
     {% for root in roots %}
     <div class="cat-node">
       <strong>{{ root.name }}</strong>
-      <span class="muted">({{ root.products.count() }} products)</span>
+      <span class="muted">({{ counts.get(root.id, 0) }} products)</span>
       <a class="link-muted" href="{{ url_for('admin.categories', edit=root.id) }}">edit</a>
       <form method="post" action="{{ url_for('admin.category_delete', cat_id=root.id) }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="link-btn">delete</button>
       </form>
       <ul class="cat-children">
         {% for child in root.children %}
         <li>
-          {{ child.name }} <span class="muted">({{ child.products.count() }})</span>
+          {{ child.name }} <span class="muted">({{ counts.get(child.id, 0) }})</span>
           <a class="link-muted" href="{{ url_for('admin.categories', edit=child.id) }}">edit</a>
           <form method="post" action="{{ url_for('admin.category_delete', cat_id=child.id) }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="link-btn">delete</button>
           </form>
         </li>
@@ -46,6 +48,7 @@
   <section class="card">
     <h2>{{ 'Edit category' if editing else 'Add a category' }}</h2>
     <form method="post" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% if editing %}<input type="hidden" name="category_id" value="{{ editing.id }}">{% endif %}
       <label>Name<input type="text" name="name" required value="{{ editing.name if editing else '' }}"></label>
       <label>Parent category

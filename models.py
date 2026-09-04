@@ -95,7 +95,7 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     slug = db.Column(db.String(140), unique=True, nullable=False)
-    parent_id = db.Column(db.Integer, db.ForeignKey("categories.id"), nullable=True)
+    parent_id = db.Column(db.Integer, db.ForeignKey("categories.id"), nullable=True, index=True)
     is_active = db.Column(db.Boolean, default=True)
 
     parent = db.relationship("Category", remote_side=[id], backref="children")
@@ -117,13 +117,14 @@ class Product(db.Model):
     slug = db.Column(db.String(220), unique=True, nullable=False)
     description = db.Column(db.Text, default="")
     brand = db.Column(db.String(100), index=True)
-    price = db.Column(db.Float, nullable=False)
+    price = db.Column(db.Float, nullable=False, index=True)
     deal_price = db.Column(db.Float)
-    stock = db.Column(db.Integer, default=0, nullable=False)
-    category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), nullable=False)
-    is_deal = db.Column(db.Boolean, default=False)
-    is_featured = db.Column(db.Boolean, default=False)
-    rating = db.Column(db.Float, default=0.0)
+    stock = db.Column(db.Integer, default=0, nullable=False, index=True)
+    category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), nullable=False, index=True)
+    is_deal = db.Column(db.Boolean, default=False, index=True)
+    is_featured = db.Column(db.Boolean, default=False, index=True)
+    rating = db.Column(db.Float, default=0.0, index=True)
+    primary_image_url = db.Column(db.String(500))
     rating_count = db.Column(db.Integer, default=0)
     created_date = db.Column(db.DateTime, default=utcnow)
 
@@ -149,6 +150,16 @@ class Product(db.Model):
                 return img
         return self.images[0] if self.images else None
 
+    @property
+    def image_url(self):
+        """Single fast image URL for cards/lists (no N+1 on the images table)."""
+        if self.primary_image_url:
+            return self.primary_image_url
+        img = self.primary_image
+        if img:
+            return img.url
+        return "/static/images/placeholder.svg"
+
     def recompute_rating(self):
         agg = db.session.query(
             db.func.avg(Review.rating), db.func.count(Review.id)
@@ -160,7 +171,7 @@ class Product(db.Model):
 class ProductImage(db.Model):
     __tablename__ = "product_images"
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     url = db.Column(db.String(500), nullable=False)
     alt = db.Column(db.String(200))
     is_primary = db.Column(db.Boolean, default=False)
@@ -170,7 +181,7 @@ class ProductImage(db.Model):
 class Review(db.Model):
     __tablename__ = "reviews"
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=False)
     rating = db.Column(db.Integer, nullable=False)
     title = db.Column(db.String(160))
@@ -182,7 +193,7 @@ class Review(db.Model):
 class ProductQA(db.Model):
     __tablename__ = "product_qa"
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     question = db.Column(db.String(400), nullable=False)
     answer = db.Column(db.Text)
     author = db.Column(db.String(120))
@@ -227,7 +238,7 @@ class PromoCode(db.Model):
 class StockNotification(db.Model):
     __tablename__ = "stock_notifications"
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     email = db.Column(db.String(255), nullable=False)
     created_date = db.Column(db.DateTime, default=utcnow)
     notified = db.Column(db.Boolean, default=False)
@@ -236,9 +247,9 @@ class StockNotification(db.Model):
 class Order(db.Model):
     __tablename__ = "orders"
     id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=False, index=True)
     order_number = db.Column(db.String(40), unique=True, nullable=False)
-    status = db.Column(db.String(30), default="placed", nullable=False)
+    status = db.Column(db.String(30), default="placed", nullable=False, index=True)
     subtotal = db.Column(db.Float, nullable=False)
     discount = db.Column(db.Float, default=0.0)
     promo_code = db.Column(db.String(40))
@@ -246,7 +257,7 @@ class Order(db.Model):
     shipping_fee = db.Column(db.Float, default=0.0)
     total = db.Column(db.Float, nullable=False)
     delivery_method = db.Column(db.String(30), default="standard")
-    placed_date = db.Column(db.DateTime, default=utcnow)
+    placed_date = db.Column(db.DateTime, default=utcnow, index=True)
     # Shipping address snapshot
     ship_name = db.Column(db.String(120))
     ship_line1 = db.Column(db.String(255))
@@ -269,8 +280,8 @@ class Order(db.Model):
 class OrderItem(db.Model):
     __tablename__ = "order_items"
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"))
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), index=True)
     product_name = db.Column(db.String(200), nullable=False)
     product_slug = db.Column(db.String(220))
     image_url = db.Column(db.String(500))
@@ -281,7 +292,7 @@ class OrderItem(db.Model):
 class Shipping(db.Model):
     __tablename__ = "shipping"
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, index=True)
     tracking_number = db.Column(db.String(60), unique=True)
     carrier = db.Column(db.String(60), default="ShopLinq Express")
     status = db.Column(db.String(30), default="placed", nullable=False)
@@ -307,7 +318,7 @@ class Shipping(db.Model):
 class Payment(db.Model):
     __tablename__ = "payments"
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, index=True)
     method = db.Column(db.String(30), nullable=False)  # card | cod
     status = db.Column(db.String(30), default="pending", nullable=False)  # pending | paid | failed
     amount = db.Column(db.Float, nullable=False)

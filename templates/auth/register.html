@@ -6,6 +6,7 @@
 <div class="auth-card card">
   <h1>Create account</h1>
   <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Full name<input type="text" name="name" required placeholder="Alex Morgan"></label>
     <label>Email<input type="email" name="email" required placeholder="you@example.com"></label>
     <label>Password<input type="password" name="password" required minlength="8" placeholder="At least 8 characters"></label>

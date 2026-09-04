@@ -20,6 +20,7 @@
   <section class="card">
     <h2>Profile</h2>
     <form method="post" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="details">
       <label>Name<input type="text" name="name" required value="{{ current_user.name }}"></label>
       <label>Email<input type="email" value="{{ current_user.email }}" disabled></label>
@@ -31,6 +32,7 @@
   <section class="card">
     <h2>Change password</h2>
     <form method="post" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="password">
       <label>Current password<input type="password" name="current_password" required></label>
       <label>New password<input type="password" name="new_password" required minlength="8"></label>

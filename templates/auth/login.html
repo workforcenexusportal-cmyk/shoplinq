@@ -6,6 +6,7 @@
 <div class="auth-card card">
   <h1>Sign in</h1>
   <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Email<input type="email" name="email" required placeholder="you@example.com"></label>
     <label>Password<input type="password" name="password" required placeholder="Your password"></label>
     <label class="checkbox-row"><input type="checkbox" name="remember" value="1"> Keep me signed in</label>

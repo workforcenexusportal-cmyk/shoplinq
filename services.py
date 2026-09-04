@@ -7,7 +7,7 @@ from flask import current_app, session
 
 from extensions import db
 from models import (
-    Cart, CartItem, Customer, Order, OrderItem, Payment, Product,
+    Cart, CartItem, Category, Customer, Order, OrderItem, Payment, Product,
     PromoCode, Shipping, utcnow,
 )
 
@@ -15,6 +15,28 @@ TAX_RATE = 0.08
 STANDARD_SHIPPING = 4.99
 EXPRESS_SHIPPING = 14.99
 FREE_SHIPPING_THRESHOLD = 50.00
+
+# ------------------------------------------------------------ ttl cache
+# Tiny in-process TTL cache so hot catalog queries (nav tree, brands,
+# category counts, home-page rows) don't hammer the DB on every request.
+import time as _time
+
+_CACHE = {}
+
+def cache_get(key):
+    entry = _CACHE.get(key)
+    if entry and entry[0] > _time.time():
+        return entry[1]
+    if entry:
+        _CACHE.pop(key, None)
+    return None
+
+def cache_set(key, value, ttl=300):
+    _CACHE[key] = (_time.time() + ttl, value)
+    return value
+
+def cache_clear():
+    _CACHE.clear()
 
 
 def send_email(to, subject, body):
@@ -237,15 +259,24 @@ def create_order(user, *, address, delivery_method, payment_method,
     db.session.add(order)
     db.session.flush()
 
+    # Re-validate availability right before charging: never oversell.
     for line in summary["lines"]:
         p = line["product"]
-        img = p.primary_image.url if p.primary_image else None
+        if not p.in_stock:
+            db.session.rollback()
+            return None, f"\u201c{p.name}\u201d just went out of stock. Please remove it from your cart."
+        if p.stock < line["qty"]:
+            db.session.rollback()
+            return None, f"Only {p.stock} left of \u201c{p.name}\u201d. Please update the quantity."
+    for line in summary["lines"]:
+        p = line["product"]
+        img = p.primary_image_url or (p.primary_image.url if p.primary_image else None)
         db.session.add(OrderItem(
             order_id=order.id, product_id=p.id, product_name=p.name,
             product_slug=p.slug, image_url=img,
             unit_price=p.effective_price, quantity=line["qty"],
         ))
-        p.stock = max(p.stock - line["qty"], 0)
+        p.stock -= line["qty"]
 
     shipping = Shipping(
         order_id=order.id,
@@ -322,3 +353,44 @@ def create_stripe_session(order):
         cancel_url=url_for("cart.view", _external=True),
         metadata={"order_number": order.order_number},
     )
+
+
+# ------------------------------------------------------------ catalog caches
+
+def get_nav_tree():
+    """All categories as a nested plain-dict tree (cached) — one query,
+    no per-request recursion, safe to render with hundreds of categories."""
+    cached = cache_get("nav_tree")
+    if cached is not None:
+        return cached
+    cats = Category.query.filter_by(is_active=True).order_by(Category.name).all()
+    nodes = {c.id: {"id": c.id, "name": c.name, "slug": c.slug,
+                    "parent_id": c.parent_id, "children": []} for c in cats}
+    roots = []
+    for node in nodes.values():
+        if node["parent_id"] is None:
+            roots.append(node)
+        else:
+            parent = nodes.get(node["parent_id"])
+            if parent:
+                parent["children"].append(node)
+    return cache_set("nav_tree", roots, ttl=600)
+
+
+def get_brand_list():
+    cached = cache_get("brands")
+    if cached is not None:
+        return cached
+    rows = (db.session.query(Product.brand)
+            .filter(Product.brand.isnot(None))
+            .distinct().order_by(Product.brand).all())
+    return cache_set("brands", [r[0] for r in rows], ttl=600)
+
+
+def get_category_counts():
+    cached = cache_get("cat_counts")
+    if cached is not None:
+        return cached
+    rows = (db.session.query(Product.category_id, db.func.count(Product.id))
+            .group_by(Product.category_id).all())
+    return cache_set("cat_counts", {r[0]: r[1] for r in rows}, ttl=600)

@@ -25,6 +25,7 @@
         <span class="muted">Expires {{ '%02d'|format(pm.exp_month) }}/{{ pm.exp_year }}</span></p>
       <div class="card-actions">
         <form method="post" action="{{ url_for('account.payment_method_delete', pm_id=pm.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-secondary btn-sm">Remove</button>
         </form>
       </div>
@@ -41,6 +42,7 @@
     <h2>Add a card</h2>
     <p class="muted">Test mode — try 4242 4242 4242 4242. Only the brand and last 4 digits are stored.</p>
     <form method="post" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>Card number<input type="text" name="card_number" required placeholder="4242 4242 4242 4242" autocomplete="off"></label>
       <div class="form-grid">
         <label>Exp. month<input type="number" name="exp_month" min="1" max="12" required placeholder="12"></label>

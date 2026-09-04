@@ -5,3 +5,4 @@ instance/
 .env
 *.sqlite
 *.db
+server.log

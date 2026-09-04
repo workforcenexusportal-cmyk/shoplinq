@@ -8,10 +8,10 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import (
-    ORDER_STATUS_FLOW, Order, Product, ProductImage, Category, Review,
-    STATUS_LABELS, utcnow,
+    ORDER_STATUS_FLOW, CartItem, Order, Product, ProductImage, Category,
+    ProductQA, Review, STATUS_LABELS, StockNotification, utcnow, WishlistItem,
 )
-from services import send_email, unique_slug
+from services import cache_clear, get_category_counts, send_email, unique_slug
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -52,13 +52,27 @@ def index():
 @admin_required
 def products():
     q = request.args.get("q", "").strip()
+    cat_id = request.args.get("category", type=int)
+    low = request.args.get("low_stock")
     query = Product.query
     if q:
-        query = query.filter(Product.name.ilike(f"%{q}%"))
-    pagination = query.order_by(Product.id.desc()).paginate(
-        page=request.args.get("page", 1, type=int), per_page=15, error_out=False)
+        query = query.filter(db.or_(
+            Product.name.ilike(f"%{q}%"), Product.brand.ilike(f"%{q}%")))
+    if cat_id:
+        cat = db.session.get(Category, cat_id)
+        if cat:
+            ids = [cat.id] + [c.id for c in cat.children]
+            query = query.filter(Product.category_id.in_(ids))
+    if low:
+        query = query.filter(Product.stock <= 5)
+    pagination = (query.options(db.joinedload(Product.category))
+                  .order_by(Product.id.desc())
+                  .paginate(page=max(1, request.args.get("page", 1, type=int) or 1),
+                            per_page=25, error_out=False))
     return render_template("admin/products.html",
-                           pagination=pagination, products=pagination.items)
+                           pagination=pagination, products=pagination.items,
+                           categories=_category_choices(), q=q, cat_id=cat_id,
+                           low=low)
 
 
 def _apply_product_form(product, form):
@@ -84,6 +98,7 @@ def _apply_product_form(product, form):
         db.session.add(ProductImage(
             product_id=product.id, url=url, alt=product.name,
             is_primary=(idx == 0), sort_order=idx))
+    product.primary_image_url = urls[0] if urls else None
     return None
 
 
@@ -98,6 +113,7 @@ def product_new():
             flash(err, "error")
         else:
             db.session.commit()
+            cache_clear()
             flash(f"Product “{product.name}” created.", "success")
             return redirect(url_for("admin.products"))
     categories = _category_choices()
@@ -125,6 +141,7 @@ def product_edit(product_id):
             flash(err, "error")
         else:
             db.session.commit()
+            cache_clear()
             flash("Product updated.", "success")
             return redirect(url_for("admin.products"))
     categories = _category_choices()
@@ -138,8 +155,13 @@ def product_delete(product_id):
     product = db.session.get(Product, product_id) or abort(404)
     Review.query.filter_by(product_id=product.id).delete()
     ProductImage.query.filter_by(product_id=product.id).delete()
+    ProductQA.query.filter_by(product_id=product.id).delete()
+    StockNotification.query.filter_by(product_id=product.id).delete()
+    WishlistItem.query.filter_by(product_id=product.id).delete()
+    CartItem.query.filter_by(product_id=product.id).delete()
     db.session.delete(product)
     db.session.commit()
+    cache_clear()
     flash("Product deleted.", "success")
     return redirect(url_for("admin.products"))
 
@@ -169,6 +191,7 @@ def categories():
                                parent_id=parent_id)
                 db.session.add(cat)
             db.session.commit()
+            cache_clear()
             flash("Category saved.", "success")
             return redirect(url_for("admin.categories"))
         editing = db.session.get(Category, cat_id) if cat_id else None
@@ -177,7 +200,9 @@ def categories():
         if edit_id:
             editing = db.session.get(Category, edit_id)
     roots = Category.query.filter_by(parent_id=None).order_by(Category.name).all()
-    return render_template("admin/categories.html", roots=roots, editing=editing)
+    return render_template("admin/categories.html", roots=roots,
+                           editing=editing, counts=get_category_counts(),
+                           total_roots=len(roots))
 
 
 @admin_bp.route("/categories/<int:cat_id>/delete", methods=["POST"])
@@ -191,6 +216,7 @@ def category_delete(cat_id):
     else:
         db.session.delete(cat)
         db.session.commit()
+        cache_clear()
         flash("Category deleted.", "success")
     return redirect(url_for("admin.categories"))
 

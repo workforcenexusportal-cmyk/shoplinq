@@ -27,6 +27,7 @@
       <div class="card-actions">
         <a class="btn btn-outline btn-sm" href="{{ url_for('account.addresses', edit=addr.id) }}">Edit</a>
         <form method="post" action="{{ url_for('account.address_delete', address_id=addr.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-secondary btn-sm">Delete</button>
         </form>
       </div>
@@ -42,6 +43,7 @@
   <section class="card">
     <h2>{{ 'Edit address' if editing else 'Add a new address' }}</h2>
     <form method="post" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% if editing %}<input type="hidden" name="address_id" value="{{ editing.id }}">{% endif %}
       <div class="form-grid">
         <label>Label<input type="text" name="label" placeholder="Home" value="{{ editing.label if editing else '' }}"></label>

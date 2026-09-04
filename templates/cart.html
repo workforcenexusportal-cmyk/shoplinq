@@ -52,11 +52,7 @@
     <h2>Order summary</h2>
     <dl class="totals">
       <div><dt>Items ({{ summary.count }})</dt><dd id="sum-subtotal">{{ summary.subtotal|money }}</dd></div>
-      {% if summary.discount %}
-      <div class="discount"><dt>Promo ({{ summary.promo.code if summary.promo }})</dt><dd id="sum-discount">-{{ summary.discount|money }}</dd></div>
-      {% else %}
-      <div class="hidden-discount"><dt>Promo</dt><dd id="sum-discount">-{{ 0|money }}</dd></div>
-      {% endif %}
+      <div class="discount" id="sum-promo-row" {% if not summary.discount %}hidden{% endif %}><dt id="sum-promo-code">Promo{% if summary.promo %} ({{ summary.promo.code }}){% endif %}</dt><dd id="sum-discount">-{{ summary.discount|money }}</dd></div>
       <div><dt>Estimated tax</dt><dd id="sum-tax">{{ summary.tax|money }}</dd></div>
       <div><dt>Shipping</dt><dd id="sum-shipping">{% if summary.shipping_fee == 0 %}FREE{% else %}{{ summary.shipping_fee|money }}{% endif %}</dd></div>
       <div class="grand"><dt>Order total</dt><dd id="sum-total">{{ summary.total|money }}</dd></div>

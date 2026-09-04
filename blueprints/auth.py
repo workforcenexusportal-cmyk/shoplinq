@@ -1,6 +1,6 @@
 """Authentication: register, login, logout, password reset."""
 from flask import (
-    Blueprint, flash, redirect, render_template, request, url_for,
+    Blueprint, current_app, flash, redirect, render_template, request, url_for,
 )
 from flask_login import current_user, login_required, login_user, logout_user
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -73,8 +73,8 @@ def login():
             login_user(user, remember=bool(request.form.get("remember")))
             merge_session_cart(user)
             flash(f"Welcome back, {user.first_name}!", "success")
-            next_url = request.args.get("next")
-            if next_url and next_url.startswith("/"):
+            next_url = request.args.get("next") or ""
+            if next_url.startswith("/") and not next_url.startswith("//"):
                 return redirect(next_url)
             return redirect(url_for("main.index"))
         flash("Incorrect email or password.", "error")
@@ -100,8 +100,9 @@ def forgot_password():
             send_email(email, "Reset your ShopLinq password",
                        f"Hi {user.first_name},\n\nReset your password using this link "
                        f"(valid for 1 hour):\n\n{link}\n\n— The ShopLinq Team")
-            if not request.headers.get("X-Requested-With"):
-                # Demo mode: surface the link in the flash so testers can proceed.
+            if current_app.config.get("DEMO_MODE"):
+                # Demo convenience ONLY: surface the reset link so testers can proceed.
+                # Set DEMO_MODE=0 in production to disable this.
                 flash(f"Demo mode: your reset link is {link}", "info")
         flash("If an account exists for that email, a reset link has been sent.", "info")
         return redirect(url_for("auth.login"))

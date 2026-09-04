@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body data-page="{% block page_id %}home{% endblock %}">
 
@@ -41,6 +42,7 @@
             <a href="{{ url_for('account.wishlist') }}">Your Wishlist</a>
             {% if current_user.is_admin %}<a href="{{ url_for('admin.index') }}">Admin Dashboard</a>{% endif %}
             <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="dropdown-signout">Sign Out</button>
             </form>
           {% else %}
@@ -67,10 +69,29 @@
 
 <nav class="catbar" aria-label="Categories">
   <div class="container catbar-inner">
-    <a href="{{ url_for('main.products') }}">All Products</a>
-    {% for c in nav_categories %}
-    <a href="{{ url_for('main.products', slug=c.slug) }}">{{ c.name }}</a>
-    {% endfor %}
+    <div class="dropdown dropdown-mega" id="all-cats">
+      <button type="button" class="catbar-all dropdown-toggle" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        All Categories
+      </button>
+      <div class="mega-menu dropdown-menu" hidden>
+        {% for c in nav_categories %}
+        <div class="mega-col">
+          <a class="mega-root" href="{{ url_for('main.products', slug=c.slug) }}">{{ c.name }}</a>
+          {% for sub in c.children %}
+          <a href="{{ url_for('main.products', slug=sub.slug) }}">{{ sub.name }}</a>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="catbar-links">
+      <a href="{{ url_for('main.products') }}">All Products</a>
+      {% for c in nav_categories[:9] %}
+      <a href="{{ url_for('main.products', slug=c.slug) }}">{{ c.name }}</a>
+      {% endfor %}
+      <a href="{{ url_for('main.products', deals=1) }}" class="catbar-deals">Today&#8217;s Deals</a>
+    </div>
   </div>
 </nav>
 

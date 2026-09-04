@@ -6,6 +6,7 @@
 <h1 class="page-title">Checkout</h1>
 
 <form method="post" id="checkout-form" class="checkout-layout" action="{{ url_for('cart.place') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="checkout-main">
     <ol class="checkout-steps" id="checkout-steps">
       <li class="active" data-step="1">1. Shipping address</li>

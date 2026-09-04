@@ -107,6 +107,7 @@
     <div class="review-list">
       {% if current_user.is_authenticated and not my_review %}
       <form method="post" class="review-form card" action="{{ url_for('account.review', product_id=product.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <h3>Write a review</h3>
         <div class="star-picker" id="star-picker">
           {% for i in range(1, 6) %}
@@ -157,6 +158,7 @@
     </div>
     {% if current_user.is_authenticated %}
     <form method="post" class="qa-form card" action="{{ url_for('account.ask_question', product_id=product.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <h3>Ask a question</h3>
       <textarea name="question" rows="3" required placeholder="e.g. Does this come with a warranty?"></textarea>
       <button type="submit" class="btn btn-primary btn-sm">Submit question</button>

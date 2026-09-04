@@ -17,6 +17,7 @@
 
 <section class="card stack-form" style="max-width: 720px;">
   <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Name<input type="text" name="name" required value="{{ product.name if product else '' }}"></label>
     <div class="form-grid">
       <label>Brand<input type="text" name="brand" value="{{ product.brand if product else '' }}"></label>

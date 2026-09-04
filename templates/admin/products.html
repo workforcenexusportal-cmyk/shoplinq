@@ -18,9 +18,17 @@
   <a class="btn btn-primary" href="{{ url_for('admin.product_new') }}">+ New product</a>
 </div>
 
-<form method="get" class="admin-search">
-  <input type="text" name="q" placeholder="Search products…" value="{{ request.args.get('q', '') }}">
-  <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+<form method="get" class="admin-search admin-filters">
+  <input type="text" name="q" placeholder="Search name or brand…" value="{{ q or '' }}">
+  <select name="category">
+    <option value="">All categories</option>
+    {% for cid, cname in categories %}
+    <option value="{{ cid }}" {% if cat_id == cid %}selected{% endif %}>{{ cname }}</option>
+    {% endfor %}
+  </select>
+  <label class="check-inline"><input type="checkbox" name="low_stock" value="1" {% if low %}checked{% endif %}> Low stock only</label>
+  <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+  <span class="muted admin-count">{{ pagination.total }} product{{ 's' if pagination.total != 1 }}</span>
 </form>
 
 <table class="table">
@@ -32,7 +40,7 @@
     <tr>
       <td>{{ p.id }}</td>
       <td class="invoice-item">
-        {% if p.primary_image %}<img src="{{ p.primary_image.url }}" alt="">{% endif %}
+        <img src="{{ p.image_url }}" alt="" loading="lazy">
         <a href="{{ url_for('main.product', slug=p.slug) }}">{{ p.name[:40] }}</a>
       </td>
       <td>{{ p.brand or '—' }}</td>
@@ -46,6 +54,7 @@
       <td class="table-actions">
         <a class="btn btn-outline btn-sm" href="{{ url_for('admin.product_edit', product_id=p.id) }}">Edit</a>
         <form method="post" action="{{ url_for('admin.product_delete', product_id=p.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-secondary btn-sm">Delete</button>
         </form>
       </td>
@@ -60,7 +69,7 @@
 <nav class="pagination">
   {% for n in pagination.iter_pages() %}
     {% if n %}<a class="page-link {% if n == pagination.page %}current{% endif %}"
-      href="{{ url_for('admin.products', q=request.args.get('q',''), page=n) }}">{{ n }}</a>
+      href="{{ url_for('admin.products', q=q or '', category=cat_id or '', low_stock='1' if low else '', page=n) }}">{{ n }}</a>
     {% else %}<span class="page-gap">&hellip;</span>{% endif %}
   {% endfor %}
 </nav>

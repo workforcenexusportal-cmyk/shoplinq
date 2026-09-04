@@ -1,8 +1,12 @@
 """Main catalog routes: homepage, product listing, product detail."""
 from flask import Blueprint, render_template, request
+from flask_login import current_user
 
 from extensions import db
 from models import Category, Product, ProductQA, Review
+from services import (
+    cache_get, cache_set, get_brand_list, get_category_counts, get_nav_tree,
+)
 
 main_bp = Blueprint("main", __name__)
 
@@ -13,16 +17,27 @@ SORTS = {
     "rating": (Product.rating.desc(), Product.rating_count.desc()),
     "newest": (Product.created_date.desc(),),
 }
+PER_PAGE = 24
 
 
 @main_bp.route("/")
 def index():
-    deals = Product.query.filter_by(is_deal=True).order_by(Product.rating.desc()).limit(8).all()
-    recommended = (
-        Product.query.filter(Product.rating >= 4.0)
-        .order_by(Product.rating_count.desc()).limit(12).all()
-    )
-    new_arrivals = Product.query.order_by(Product.created_date.desc()).limit(8).all()
+    """Homepage rows are cached for a few minutes — with 5,000+ products
+    we don't want every visitor re-running the heavy picks."""
+    deals = cache_get("home_deals")
+    if deals is None:
+        deals = (Product.query.filter(Product.is_deal.is_(True), Product.stock > 0)
+                 .order_by(db.func.random()).limit(8).all())
+        cache_set("home_deals", deals, ttl=180)
+    recommended = cache_get("home_reco")
+    if recommended is None:
+        recommended = (Product.query.filter(Product.rating >= 4.2, Product.stock > 0)
+                       .order_by(Product.rating_count.desc()).limit(12).all())
+        cache_set("home_reco", recommended, ttl=300)
+    new_arrivals = cache_get("home_new")
+    if new_arrivals is None:
+        new_arrivals = Product.query.order_by(Product.created_date.desc()).limit(8).all()
+        cache_set("home_new", new_arrivals, ttl=300)
     return render_template(
         "index.html", deals=deals, recommended=recommended,
         new_arrivals=new_arrivals,
@@ -36,9 +51,9 @@ def _category_ids(category):
 @main_bp.route("/products")
 @main_bp.route("/category/<slug>")
 def products(slug=None):
-    page = request.args.get("page", 1, type=int)
+    page = max(1, request.args.get("page", 1, type=int) or 1)
     sort = request.args.get("sort", "featured")
-    q = request.args.get("q", "").strip()
+    q = request.args.get("q", "").strip()[:100]
     category = None
     query = Product.query
 
@@ -51,6 +66,9 @@ def products(slug=None):
             category = db.session.get(Category, cat_arg)
             if category:
                 query = query.filter(Product.category_id.in_(_category_ids(category)))
+
+    if request.args.get("deals", type=int):
+        query = query.filter(Product.is_deal.is_(True))
 
     if q:
         like = f"%{q}%"
@@ -77,19 +95,13 @@ def products(slug=None):
         query = query.filter(Product.stock > 0)
 
     order_cols = SORTS.get(sort, SORTS["featured"])
-    query = query.order_by(*order_cols)
-    pagination = query.paginate(page=page, per_page=12, error_out=False)
-
-    all_brands = [
-        r[0] for r in db.session.query(Product.brand).filter(Product.brand.isnot(None))
-        .distinct().order_by(Product.brand).all()
-    ]
-    root_categories = Category.query.filter_by(parent_id=None).order_by(Category.name).all()
+    pagination = query.paginate(page=page, per_page=PER_PAGE, error_out=False)
 
     return render_template(
         "products.html", pagination=pagination, products=pagination.items,
-        all_brands=all_brands, root_categories=root_categories,
-        current_category=category, current_sort=sort,
+        all_brands=get_brand_list(), root_categories=get_nav_tree(),
+        category_counts=get_category_counts(),
+        current_category=category, current_sort=sort, query=q,
     )
 
 
@@ -102,10 +114,10 @@ def product(slug):
         ).order_by(Product.rating.desc()).limit(6).all()
     )
     reviews = p.reviews.order_by(Review.created_date.desc()).limit(8).all()
-    from flask_login import current_user
     my_review = None
     if current_user.is_authenticated:
-        my_review = Review.query.filter_by(product_id=p.id, customer_id=current_user.id).first()
+        my_review = Review.query.filter_by(
+            product_id=p.id, customer_id=current_user.id).first()
     return render_template(
         "product.html", product=p, related=related,
         reviews=reviews, my_review=my_review, qa=p.questions,

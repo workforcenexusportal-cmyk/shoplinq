@@ -11,6 +11,17 @@
 
   function money(n) { return "$" + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
 
+  function csrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute("content") : "";
+  }
+
+  function escapeHTML(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
   /* ---------- toast ---------- */
   var toastTimer = null;
   function toast(msg) {
@@ -30,7 +41,11 @@
   function postJSON(url, data) {
     return fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Requested-With": "fetch" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "fetch",
+        "X-CSRF-Token": csrfToken()
+      },
       body: JSON.stringify(data || {})
     }).then(function (res) { return res.json().then(function (j) { j._status = res.status; return j; }); });
   }
@@ -50,10 +65,13 @@
   function applySummary(data) {
     if (!$("#sum-subtotal")) return;
     $("#sum-subtotal").textContent = money(data.subtotal);
-    var discRow = $("#sum-discount");
-    if (discRow && discRow.parentElement) {
-      discRow.textContent = "-" + money(data.discount || 0);
-      discRow.parentElement.style.display = (data.discount || 0) > 0 ? "" : "none";
+    var promoRow = $("#sum-promo-row");
+    if (promoRow) {
+      promoRow.hidden = !(data.discount > 0);
+      var codeEl = $("#sum-promo-code");
+      if (codeEl) codeEl.textContent = data.promo ? "Promo (" + data.promo + ")" : "Promo";
+      var valEl = $("#sum-discount");
+      if (valEl) valEl.textContent = "-" + money(data.discount || 0);
     }
     $("#sum-tax").textContent = money(data.tax);
     var shipEl = $("#sum-shipping");
@@ -70,17 +88,22 @@
     $$(".flash").forEach(function (f) { f.remove(); });
   }, 9000);
 
-  /* ---------- account dropdown ---------- */
-  (function initDropdown() {
-    var dd = $("#account-dropdown");
-    if (!dd) return;
-    var toggle = $(".dropdown-toggle", dd), menu = $(".dropdown-menu", dd);
-    if (!toggle || !menu) return;
-    toggle.addEventListener("click", function (e) {
-      e.stopPropagation();
-      menu.hidden = !menu.hidden;
+  /* ---------- dropdowns (account menu, category mega-menu) ---------- */
+  (function initDropdowns() {
+    $$(".dropdown").forEach(function (dd) {
+      var toggle = $(".dropdown-toggle", dd), menu = $(".dropdown-menu", dd);
+      if (!toggle || !menu) return;
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.addEventListener("click", function (e) {
+        e.stopPropagation();
+        menu.hidden = !menu.hidden;
+        toggle.setAttribute("aria-expanded", String(!menu.hidden));
+      });
+      document.addEventListener("click", function () {
+        menu.hidden = true;
+        toggle.setAttribute("aria-expanded", "false");
+      });
     });
-    document.addEventListener("click", function () { menu.hidden = true; });
   })();
 
   /* ---------- search autocomplete ---------- */
@@ -103,8 +126,8 @@
               data.results.forEach(function (r) {
                 var a = document.createElement("a");
                 a.href = r.url;
-                a.innerHTML = (r.image ? '<img src="' + r.image + '" alt="">' : "") +
-                  '<span class="s-name">' + r.name + (r.brand ? ' <em class="muted">' + r.brand + "</em>" : "") + "</span>" +
+                a.innerHTML = (r.image ? '<img src="' + escapeHTML(r.image) + '" alt="">' : "") +
+                  '<span class="s-name">' + escapeHTML(r.name) + (r.brand ? ' <em class="muted">' + escapeHTML(r.brand) + "</em>" : "") + "</span>" +
                   '<span class="s-price">' + money(r.price) + "</span>";
                 box.appendChild(a);
               });
@@ -345,20 +368,17 @@
     $$(".js-save-later").forEach(function (btn) {
       btn.addEventListener("click", function () {
         setLoading(btn);
-        postJSON("/api/wishlist/toggle", { product_id: btn.dataset.productId })
-          .then(function (w) {
-            if (w.ok === false && w.login_required) {
-              clearLoading(btn); toast("Please sign in to save items for later."); return;
+        postJSON("/api/cart/save-later", { product_id: btn.dataset.productId })
+          .then(function (data) {
+            clearLoading(btn);
+            if (data.ok === false) {
+              toast(data.message || "Could not save this item.");
+              return;
             }
-            return postJSON("/api/cart/remove", { product_id: btn.dataset.productId })
-              .then(function (data) {
-                clearLoading(btn);
-                if (data.ok === false) return;
-                removeRow(btn.dataset.productId);
-                applySummary(data);
-                if (data.count === 0) { location.reload(); return; }
-                toast("Saved to your wishlist.");
-              });
+            removeRow(btn.dataset.productId);
+            applySummary(data);
+            if (data.count === 0) { location.reload(); return; }
+            toast(data.message || "Saved to your wishlist.");
           })
           .catch(function () { clearLoading(btn); toast("Network error."); });
       });

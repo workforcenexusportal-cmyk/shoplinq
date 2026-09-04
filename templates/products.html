@@ -30,18 +30,30 @@
           All categories
         </label>
         {% for root in root_categories %}
-        <label class="filter-option">
-          <input type="radio" name="category" value="{{ root.id }}" class="js-filter-control"
-                 {% if (request.args.get('category')|int == root.id) or (current_category and current_category.id == root.id) %}checked{% endif %}>
-          {{ root.name }}
-        </label>
-        {% for child in root.children %}
-        <label class="filter-option filter-sub">
-          <input type="radio" name="category" value="{{ child.id }}" class="js-filter-control"
-                 {% if (request.args.get('category')|int == child.id) or (current_category and current_category.id == child.id) %}checked{% endif %}>
-          {{ child.name }}
-        </label>
-        {% endfor %}
+        {% set is_current_root = (current_category and current_category.id == root.id)
+              or (current_category and current_category.parent and current_category.parent.id == root.id)
+              or (request.args.get('category')|int == root.id) %}
+        {% set is_current_child = current_category and current_category.parent and current_category.parent.id == root.id %}
+        <details class="filter-cat" {% if is_current_root %}open{% endif %}>
+          <summary>
+            <label class="filter-option filter-cat-root">
+              <input type="radio" name="category" value="{{ root.id }}" class="js-filter-control"
+                     {% if (request.args.get('category')|int == root.id) or (current_category and current_category.id == root.id) %}checked{% endif %}>
+              {{ root.name }} <span class="filter-count">{{ category_counts.get(root.id, 0) }}</span>
+            </label>
+          </summary>
+          {% if root.children %}
+          <div class="filter-cat-children">
+            {% for child in root.children %}
+            <label class="filter-option filter-sub">
+              <input type="radio" name="category" value="{{ child.id }}" class="js-filter-control"
+                     {% if (request.args.get('category')|int == child.id) or (current_category and current_category.id == child.id) %}checked{% endif %}>
+              {{ child.name }} <span class="filter-count">{{ category_counts.get(child.id, 0) }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </details>
         {% endfor %}
       </div>
 
@@ -55,14 +67,28 @@
       </div>
 
       <h3 class="filter-title">Brand</h3>
-      <div class="filter-group">
-        {% for b in all_brands %}
+      <div class="filter-group brand-list">
+        {% for b in all_brands[:8] %}
         <label class="filter-option">
           <input type="checkbox" name="brand" value="{{ b }}" class="js-filter-control"
                  {% if b in request.args.getlist('brand') %}checked{% endif %}>
           {{ b }}
         </label>
         {% endfor %}
+        {% if all_brands|length > 8 %}
+        <details class="filter-more">
+          <summary>Show all {{ all_brands|length }} brands</summary>
+          <div class="brand-scroll">
+            {% for b in all_brands[8:] %}
+            <label class="filter-option">
+              <input type="checkbox" name="brand" value="{{ b }}" class="js-filter-control"
+                     {% if b in request.args.getlist('brand') %}checked{% endif %}>
+              {{ b }}
+            </label>
+            {% endfor %}
+          </div>
+        </details>
+        {% endif %}
       </div>
 
       <h3 class="filter-title">Rating</h3>
@@ -82,6 +108,11 @@
           <input type="checkbox" name="in_stock" value="1" class="js-filter-control"
                  {% if request.args.get('in_stock') %}checked{% endif %}>
           In stock only
+        </label>
+        <label class="filter-option">
+          <input type="checkbox" name="deals" value="1" class="js-filter-control"
+                 {% if request.args.get('deals') %}checked{% endif %}>
+          Deals only
         </label>
       </div>
 
