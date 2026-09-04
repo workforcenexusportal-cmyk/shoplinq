@@ -6,3 +6,4 @@ instance/
 *.sqlite
 *.db
 server.log
+static/uploads/

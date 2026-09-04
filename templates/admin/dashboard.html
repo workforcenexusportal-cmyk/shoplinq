@@ -2,15 +2,7 @@
 {% block title %}Admin — ShopLinq{% endblock %}
 {% block page_id %}admin{% endblock %}
 
-{% block subnav %}
-<div class="subnav admin-subnav"><div class="container">
-  <a class="active" href="{{ url_for('admin.index') }}">Dashboard</a>
-  <a href="{{ url_for('admin.products') }}">Products</a>
-  <a href="{{ url_for('admin.categories') }}">Categories</a>
-  <a href="{{ url_for('admin.orders') }}">Orders</a>
-  <a href="{{ url_for('admin.analytics') }}">Analytics</a>
-</div></div>
-{% endblock %}
+{% block subnav %}{% include "admin/_subnav.html" %}{% endblock %}
 
 {% block content %}
 <h1 class="page-title">Admin dashboard</h1>

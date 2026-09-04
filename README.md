@@ -27,9 +27,14 @@ A full-featured, Amazon-style online marketplace built with **Python Flask** —
 python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+cp .env.example .env             # Windows: copy .env.example .env
 python seed.py                   # fresh DB + demo catalog
 python app.py                    # → http://127.0.0.1:5000
 ```
+
+The included `.env.example` sets `FLASK_DEBUG=1` for local development. In
+production the app **requires** a real `SECRET_KEY` and enables HTTPS-only
+secure cookies automatically.
 
 ### Demo accounts
 
@@ -43,6 +48,14 @@ The demo customer already has order history at different tracking stages, a wish
 ### Stripe (optional)
 
 Copy `.env.example` to `.env` and add your **test** keys (`sk_test_...` / `pk_test_...`). Without keys, card payments run in demo mode.
+
+For real card confirmation, point a Stripe webhook at `/webhooks/stripe` (event `checkout.session.completed`) and set `STRIPE_WEBHOOK_SECRET`. Locally you can use the Stripe CLI: `stripe listen --forward-to localhost:5000/webhooks/stripe`.
+
+## Tests
+
+```bash
+pytest            # runs the functional suite in tests/
+```
 
 ## Project structure
 
@@ -67,7 +80,48 @@ seed.py              # demo data
 
 ## Deployment
 
-PythonAnywhere deployment will follow once development is complete — the app already runs cleanly under gunicorn (`gunicorn app:app` style, via `create_app()`).
+The app runs under gunicorn via the WSGI entrypoint:
+
+```bash
+gunicorn wsgi:app
+```
+
+### Production checklist
+
+- Set a strong `SECRET_KEY` (`python -c "import secrets; print(secrets.token_hex(32))"`).
+- Leave `FLASK_DEBUG` unset (enables secure cookies, disables the reloader).
+- Set `DEMO_MODE=0` so payments and password resets stop simulating.
+- Configure `DATABASE_URL` (MySQL/PostgreSQL) and `MAIL_*` for real email.
+- Apply the schema with migrations instead of `create_all`:
+  ```bash
+  flask db upgrade      # requires FLASK_APP=app.py
+  ```
+
+### Database migrations
+
+Schema changes are managed with Flask-Migrate (Alembic):
+
+```bash
+export FLASK_APP=app.py          # Windows: set FLASK_APP=app.py
+flask db migrate -m "describe change"
+flask db upgrade
+```
+
+### PythonAnywhere
+
+1. Upload/clone the repo, create a virtualenv, `pip install -r requirements.txt`.
+2. Create a **MySQL** database in the *Databases* tab, then set
+   `DATABASE_URL=mysql://USER:PASSWORD@USER.mysql.pythonanywhere-services.com/USER$shoplinq`.
+3. In the *Web* tab, set the source directory and edit the WSGI file to:
+   ```python
+   import os
+   os.environ["SECRET_KEY"] = "..."
+   os.environ["DATABASE_URL"] = "mysql://..."
+   os.environ["DEMO_MODE"] = "0"
+   from wsgi import app as application
+   ```
+4. Map `/static/` to the project's `static/` folder.
+5. Run `flask db upgrade` (then `python seed.py` if you want demo data), and reload the web app.
 
 ## Test-card cheat sheet
 

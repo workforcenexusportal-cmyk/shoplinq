@@ -697,3 +697,22 @@ a.order-row:hover { text-decoration: none; }
     left: auto; right: 0; max-height: 60vh;
   }
 }
+
+/* ---------- error pages ---------- */
+.error-page {
+  display: flex; justify-content: center; align-items: center;
+  min-height: 52vh; padding: 2rem 1rem;
+}
+.error-card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 2.5rem 2rem; text-align: center; max-width: 480px; width: 100%;
+}
+.error-code {
+  font-family: var(--font-head); font-weight: 800; font-size: 4rem;
+  line-height: 1; margin: 0; color: var(--primary);
+  letter-spacing: -2px;
+}
+.error-title { font-family: var(--font-head); margin: 0.4rem 0 0.6rem; color: var(--ink); }
+.error-message { color: var(--muted); margin: 0 0 1.4rem; }
+.error-actions { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }

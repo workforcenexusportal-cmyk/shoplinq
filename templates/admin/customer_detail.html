@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.name }} — Admin — ShopLinq{% endblock %}
+{% block page_id %}admin-customer-detail{% endblock %}
+
+{% block subnav %}{% include "admin/_subnav.html" %}{% endblock %}
+
+{% block content %}
+<a class="link-muted" href="{{ url_for('admin.customers') }}">← Back to customers</a>
+<h1 class="page-title">{{ customer.name }}</h1>
+
+<div class="two-col-layout">
+  <section class="card">
+    <h2>Profile</h2>
+    <dl class="detail-list">
+      <dt>Email</dt><dd>{{ customer.email }}</dd>
+      <dt>Joined</dt><dd>{{ customer.created_date.strftime('%b %d, %Y') if customer.created_date else '—' }}</dd>
+      <dt>Role</dt><dd>{% if customer.is_admin %}Admin{% else %}Customer{% endif %}</dd>
+      <dt>Status</dt><dd>{% if customer.is_active %}Active{% else %}Disabled{% endif %}</dd>
+      <dt>Orders</dt><dd>{{ orders|length }}</dd>
+      <dt>Total spent</dt><dd>${{ '%.2f'|format(spent) }}</dd>
+    </dl>
+
+    <div class="admin-actions">
+      <form method="post" action="{{ url_for('admin.customer_toggle_active', customer_id=customer.id) }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline">{{ 'Deactivate' if customer.is_active else 'Activate' }} account</button>
+      </form>
+      <form method="post" action="{{ url_for('admin.customer_toggle_admin', customer_id=customer.id) }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline">{{ 'Revoke admin' if customer.is_admin else 'Make admin' }}</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Order history</h2>
+    {% if orders %}
+    <table class="admin-table">
+      <thead><tr><th>Order</th><th>Date</th><th>Status</th><th>Total</th></tr></thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td><a href="{{ url_for('admin.order_detail', order_id=o.id) }}">{{ o.order_number }}</a></td>
+          <td>{{ o.placed_date.strftime('%b %d, %Y') if o.placed_date else '—' }}</td>
+          <td>{{ o.status|capitalize }}</td>
+          <td>${{ '%.2f'|format(o.total) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No orders yet.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

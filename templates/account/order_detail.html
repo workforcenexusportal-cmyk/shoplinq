@@ -25,6 +25,35 @@
       </header>
     </div>
 
+    {% if order.return_status and order.return_status != 'none' %}
+    <div class="card">
+      <span class="badge return-{{ order.return_status }}">{{ order.return_label }}</span>
+      {% if order.return_reason %}<p class="muted">Reason: {{ order.return_reason }}</p>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if order.can_cancel or order.can_return %}
+    <div class="card order-actions-card">
+      <h2>Need to make a change?</h2>
+      {% if order.can_cancel %}
+      <form method="post" action="{{ url_for('account.cancel_order', order_id=order.id) }}"
+            onsubmit="return confirm('Cancel this order? Items will be returned to stock and any payment refunded.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline">Cancel order</button>
+      </form>
+      {% endif %}
+      {% if order.can_return %}
+      <form method="post" action="{{ url_for('account.return_order', order_id=order.id) }}" class="return-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Return this order
+          <textarea name="reason" rows="2" placeholder="Tell us why you're returning it…" required></textarea>
+        </label>
+        <button type="submit" class="btn btn-outline">Request return</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <div class="card">
       <h2>Invoice</h2>
       <table class="table invoice-table">

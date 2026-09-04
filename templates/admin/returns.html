@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Returns — Admin — ShopLinq{% endblock %}
+{% block page_id %}admin-returns{% endblock %}
+
+{% block subnav %}{% include "admin/_subnav.html" %}{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Returns</h1>
+
+<section class="card">
+  <h2>Pending requests</h2>
+  {% if pending %}
+  <table class="admin-table">
+    <thead><tr><th>Order</th><th>Customer</th><th>Reason</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for o in pending %}
+      <tr>
+        <td><a href="{{ url_for('admin.order_detail', order_id=o.id) }}">{{ o.order_number }}</a></td>
+        <td>{{ o.contact_email }}</td>
+        <td>{{ o.return_reason or '—' }}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin.return_resolve', order_id=o.id) }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" name="decision" value="approved" class="btn btn-outline btn-sm">Approve</button>
+            <button type="submit" name="decision" value="rejected" class="btn btn-outline btn-sm">Reject</button>
+            <button type="submit" name="decision" value="refunded" class="btn btn-primary btn-sm"
+              onclick="return confirm('Refund and restock {{ o.order_number }}?');">Refund</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No pending return requests.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Recent history</h2>
+  {% if history %}
+  <table class="admin-table">
+    <thead><tr><th>Order</th><th>Customer</th><th>Outcome</th></tr></thead>
+    <tbody>
+      {% for o in history %}
+      <tr>
+        <td><a href="{{ url_for('admin.order_detail', order_id=o.id) }}">{{ o.order_number }}</a></td>
+        <td>{{ o.contact_email }}</td>
+        <td>{{ o.return_status|capitalize }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No resolved returns yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

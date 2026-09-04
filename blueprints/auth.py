@@ -6,7 +6,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash
 
-from extensions import db
+from extensions import db, limiter
 from models import Customer
 from services import merge_session_cart, send_email
 
@@ -33,6 +33,7 @@ def verify_reset_token(token, max_age=3600):
 
 
 @auth_bp.route("/register", methods=["GET", "POST"])
+@limiter.limit("10 per hour; 3 per minute", methods=["POST"])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for("main.index"))
@@ -62,6 +63,7 @@ def register():
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("20 per hour; 5 per minute", methods=["POST"])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("main.index"))
@@ -90,6 +92,7 @@ def logout():
 
 
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
+@limiter.limit("5 per hour; 2 per minute", methods=["POST"])
 def forgot_password():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
@@ -110,6 +113,7 @@ def forgot_password():
 
 
 @auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+@limiter.limit("10 per hour", methods=["POST"])
 def reset_password(token):
     user = verify_reset_token(token)
     if not user:

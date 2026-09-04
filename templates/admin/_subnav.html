@@ -1,0 +1,11 @@
+{% set ep = request.endpoint %}
+<div class="subnav admin-subnav"><div class="container">
+  <a href="{{ url_for('admin.index') }}" {% if ep == 'admin.index' %}class="active"{% endif %}>Dashboard</a>
+  <a href="{{ url_for('admin.products') }}" {% if ep in ('admin.products', 'admin.product_new', 'admin.product_edit') %}class="active"{% endif %}>Products</a>
+  <a href="{{ url_for('admin.categories') }}" {% if ep == 'admin.categories' %}class="active"{% endif %}>Categories</a>
+  <a href="{{ url_for('admin.orders') }}" {% if ep in ('admin.orders', 'admin.order_detail') %}class="active"{% endif %}>Orders</a>
+  <a href="{{ url_for('admin.returns') }}" {% if ep == 'admin.returns' %}class="active"{% endif %}>Returns</a>
+  <a href="{{ url_for('admin.promos') }}" {% if ep == 'admin.promos' %}class="active"{% endif %}>Promos</a>
+  <a href="{{ url_for('admin.customers') }}" {% if ep in ('admin.customers', 'admin.customer_detail') %}class="active"{% endif %}>Customers</a>
+  <a href="{{ url_for('admin.analytics') }}" {% if ep == 'admin.analytics' %}class="active"{% endif %}>Analytics</a>
+</div></div>

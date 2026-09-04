@@ -6,6 +6,7 @@ from extensions import db
 from models import Category, Product, ProductQA, Review
 from services import (
     cache_get, cache_set, get_brand_list, get_category_counts, get_nav_tree,
+    get_recently_viewed, record_recently_viewed,
 )
 
 main_bp = Blueprint("main", __name__)
@@ -40,7 +41,7 @@ def index():
         cache_set("home_new", new_arrivals, ttl=300)
     return render_template(
         "index.html", deals=deals, recommended=recommended,
-        new_arrivals=new_arrivals,
+        new_arrivals=new_arrivals, recently_viewed=get_recently_viewed(limit=8),
     )
 
 
@@ -118,7 +119,10 @@ def product(slug):
     if current_user.is_authenticated:
         my_review = Review.query.filter_by(
             product_id=p.id, customer_id=current_user.id).first()
+    recently_viewed = get_recently_viewed(exclude_id=p.id, limit=6)
+    record_recently_viewed(p.id)
     return render_template(
         "product.html", product=p, related=related,
         reviews=reviews, my_review=my_review, qa=p.questions,
+        recently_viewed=recently_viewed,
     )

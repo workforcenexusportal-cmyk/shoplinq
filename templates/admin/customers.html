@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Customers — Admin — ShopLinq{% endblock %}
+{% block page_id %}admin-customers{% endblock %}
+
+{% block subnav %}{% include "admin/_subnav.html" %}{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Customers</h1>
+
+<form method="get" class="filter-bar">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search name or email">
+  <button type="submit" class="btn btn-outline">Search</button>
+  {% if q %}<a class="link-muted" href="{{ url_for('admin.customers') }}">Clear</a>{% endif %}
+</form>
+
+<section class="card">
+  {% if customers %}
+  <table class="admin-table">
+    <thead>
+      <tr><th>Name</th><th>Email</th><th>Joined</th><th>Role</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for c in customers %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td>{{ c.email }}</td>
+        <td>{{ c.created_date.strftime('%b %d, %Y') if c.created_date else '—' }}</td>
+        <td>{% if c.is_admin %}<span class="badge badge-info">Admin</span>{% else %}Customer{% endif %}</td>
+        <td>{% if c.is_active %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-muted">Disabled</span>{% endif %}</td>
+        <td><a class="link-muted" href="{{ url_for('admin.customer_detail', customer_id=c.id) }}">view</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if pagination.pages > 1 %}
+  <div class="pagination">
+    {% if pagination.has_prev %}<a href="{{ url_for('admin.customers', page=pagination.prev_num, q=q) }}">← Prev</a>{% endif %}
+    <span class="muted">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    {% if pagination.has_next %}<a href="{{ url_for('admin.customers', page=pagination.next_num, q=q) }}">Next →</a>{% endif %}
+  </div>
+  {% endif %}
+  {% else %}
+  <p class="muted">No customers found.</p>
+  {% endif %}
+</section>
+{% endblock %}

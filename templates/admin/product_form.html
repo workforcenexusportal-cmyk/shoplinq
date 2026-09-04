@@ -2,21 +2,13 @@
 {% block title %}{{ 'Edit' if product else 'New' }} product — Admin — ShopLinq{% endblock %}
 {% block page_id %}admin-product-form{% endblock %}
 
-{% block subnav %}
-<div class="subnav admin-subnav"><div class="container">
-  <a href="{{ url_for('admin.index') }}">Dashboard</a>
-  <a class="active" href="{{ url_for('admin.products') }}">Products</a>
-  <a href="{{ url_for('admin.categories') }}">Categories</a>
-  <a href="{{ url_for('admin.orders') }}">Orders</a>
-  <a href="{{ url_for('admin.analytics') }}">Analytics</a>
-</div></div>
-{% endblock %}
+{% block subnav %}{% include "admin/_subnav.html" %}{% endblock %}
 
 {% block content %}
 <h1 class="page-title">{{ 'Edit product' if product else 'New product' }}</h1>
 
 <section class="card stack-form" style="max-width: 720px;">
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Name<input type="text" name="name" required value="{{ product.name if product else '' }}"></label>
     <div class="form-grid">
@@ -41,6 +33,9 @@
     <label>Description<textarea name="description" rows="4">{{ product.description if product else '' }}</textarea></label>
     <label>Image URLs — one per line; the first is the main image
       <textarea name="image_urls" rows="3" placeholder="/static/images/phone-1.svg">{{ product.images|map(attribute='url')|join('\n') if product else '' }}</textarea>
+    </label>
+    <label>Upload images <span class="muted">optional — PNG, JPG, GIF or WebP; appended after the URLs above</span>
+      <input type="file" name="image_files" accept="image/png,image/jpeg,image/gif,image/webp" multiple>
     </label>
     <label class="checkbox-row"><input type="checkbox" name="is_deal" value="1" {% if product and product.is_deal %}checked{% endif %}> Deal of the Day</label>
     <label class="checkbox-row"><input type="checkbox" name="is_featured" value="1" {% if product and product.is_featured %}checked{% endif %}> Featured</label>

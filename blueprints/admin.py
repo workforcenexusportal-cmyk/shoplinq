@@ -1,19 +1,49 @@
 """Admin/seller dashboard: products, categories, inventory, order fulfillment."""
+import os
+import secrets
 from functools import wraps
 
 from flask import (
     Blueprint, abort, flash, redirect, render_template, request, url_for,
 )
 from flask_login import current_user, login_required
+from werkzeug.utils import secure_filename
 
 from extensions import db
 from models import (
     ORDER_STATUS_FLOW, CartItem, Order, Product, ProductImage, Category,
     ProductQA, Review, STATUS_LABELS, StockNotification, utcnow, WishlistItem,
 )
-from services import cache_clear, get_category_counts, send_email, unique_slug
+from services import (
+    cache_clear, get_category_counts, notify_back_in_stock, send_email,
+    unique_slug,
+)
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
+def _save_uploaded_images():
+    """Persist uploaded product images to static/uploads and return their URLs."""
+    from flask import current_app
+    saved = []
+    files = request.files.getlist("image_files")
+    if not files:
+        return saved
+    upload_dir = os.path.join(current_app.root_path, "static", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    for f in files:
+        if not f or not f.filename:
+            continue
+        ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+        if ext not in ALLOWED_IMAGE_EXT:
+            continue
+        base = secure_filename(f.filename.rsplit(".", 1)[0]) or "image"
+        fname = f"{base[:40]}-{secrets.token_hex(6)}.{ext}"
+        f.save(os.path.join(upload_dir, fname))
+        saved.append(url_for("static", filename=f"uploads/{fname}"))
+    return saved
 
 
 def admin_required(fn):
@@ -93,6 +123,7 @@ def _apply_product_form(product, form):
     db.session.add(product)  # no-op when editing an existing product
     db.session.flush()  # assigns PK on new products before image rows are written
     urls = [u.strip() for u in form.get("image_urls", "").splitlines() if u.strip()]
+    urls += _save_uploaded_images()
     ProductImage.query.filter_by(product_id=product.id).delete()
     for idx, url in enumerate(urls[:8]):
         db.session.add(ProductImage(
@@ -136,13 +167,20 @@ def _category_choices():
 def product_edit(product_id):
     product = db.session.get(Product, product_id) or abort(404)
     if request.method == "POST":
+        was_out_of_stock = product.stock <= 0
         err = _apply_product_form(product, request.form)
         if err:
             flash(err, "error")
         else:
+            notified = 0
+            if was_out_of_stock and product.stock > 0:
+                notified = notify_back_in_stock(product)
             db.session.commit()
             cache_clear()
-            flash("Product updated.", "success")
+            if notified:
+                flash(f"Product updated. Notified {notified} waiting customer(s).", "success")
+            else:
+                flash("Product updated.", "success")
             return redirect(url_for("admin.products"))
     categories = _category_choices()
     return render_template("admin/product_form.html", product=product,
@@ -271,10 +309,11 @@ def order_update(order_id):
     db.session.commit()
 
     if shipping and new_status != "cancelled":
+        recipient_name = order.customer.first_name if order.customer else "there"
         send_email(
-            order.customer.email,
+            order.contact_email,
             f"ShopLinq order {order.order_number}: {STATUS_LABELS[new_status]}",
-            f"Hi {order.customer.first_name},\n\nYour order {order.order_number} is now: "
+            f"Hi {recipient_name},\n\nYour order {order.order_number} is now: "
             f"{STATUS_LABELS[new_status]}.\nTracking number: {shipping.tracking_number}\n\n"
             f"— The ShopLinq Team")
     flash("Order updated.", "success")
@@ -326,3 +365,153 @@ def analytics():
         top_products=top_products, recent_reviews=recent_reviews,
         rating_dist=rating_dist, avg_catalog_rating=avg_catalog_rating,
     )
+
+
+# ------------------------------------------------------------ promo codes
+
+@admin_bp.route("/promos", methods=["GET", "POST"])
+@admin_required
+def promos():
+    from models import PromoCode
+    editing = None
+    if request.method == "POST":
+        promo_id = request.form.get("promo_id", type=int)
+        code = request.form.get("code", "").strip().upper()
+        percent = request.form.get("discount_percent", type=int) or 0
+        min_spend = request.form.get("min_spend", type=float) or 0.0
+        is_active = bool(request.form.get("is_active"))
+        if not code or not 1 <= percent <= 100:
+            flash("A code and a discount between 1 and 100% are required.", "error")
+        else:
+            existing = PromoCode.query.filter_by(code=code).first()
+            if promo_id:
+                promo = db.session.get(PromoCode, promo_id) or abort(404)
+                if existing and existing.id != promo.id:
+                    flash("Another promo already uses that code.", "error")
+                    return redirect(url_for("admin.promos"))
+                promo.code = code
+                promo.discount_percent = percent
+                promo.min_spend = min_spend
+                promo.is_active = is_active
+            else:
+                if existing:
+                    flash("That code already exists.", "error")
+                    return redirect(url_for("admin.promos"))
+                db.session.add(PromoCode(
+                    code=code, discount_percent=percent,
+                    min_spend=min_spend, is_active=is_active))
+            db.session.commit()
+            flash("Promo code saved.", "success")
+            return redirect(url_for("admin.promos"))
+        editing = db.session.get(PromoCode, promo_id) if promo_id else None
+    else:
+        edit_id = request.args.get("edit", type=int)
+        if edit_id:
+            editing = db.session.get(PromoCode, edit_id)
+    codes = PromoCode.query.order_by(PromoCode.code).all()
+    return render_template("admin/promos.html", codes=codes, editing=editing)
+
+
+@admin_bp.route("/promos/<int:promo_id>/delete", methods=["POST"])
+@admin_required
+def promo_delete(promo_id):
+    from models import PromoCode
+    promo = db.session.get(PromoCode, promo_id) or abort(404)
+    db.session.delete(promo)
+    db.session.commit()
+    flash("Promo code deleted.", "success")
+    return redirect(url_for("admin.promos"))
+
+
+# ------------------------------------------------------------ customers
+
+@admin_bp.route("/customers")
+@admin_required
+def customers():
+    from models import Customer
+    q = request.args.get("q", "").strip()
+    query = Customer.query
+    if q:
+        like = f"%{q}%"
+        query = query.filter(db.or_(Customer.name.ilike(like), Customer.email.ilike(like)))
+    pagination = query.order_by(Customer.id.desc()).paginate(
+        page=max(1, request.args.get("page", 1, type=int) or 1),
+        per_page=25, error_out=False)
+    return render_template("admin/customers.html",
+                           pagination=pagination, customers=pagination.items, q=q)
+
+
+@admin_bp.route("/customers/<int:customer_id>")
+@admin_required
+def customer_detail(customer_id):
+    from models import Customer
+    customer = db.session.get(Customer, customer_id) or abort(404)
+    orders = customer.orders.order_by(Order.placed_date.desc()).all()
+    spent = sum(o.total for o in orders if o.status != "cancelled")
+    return render_template("admin/customer_detail.html",
+                           customer=customer, orders=orders, spent=spent)
+
+
+@admin_bp.route("/customers/<int:customer_id>/toggle-active", methods=["POST"])
+@admin_required
+def customer_toggle_active(customer_id):
+    from models import Customer
+    customer = db.session.get(Customer, customer_id) or abort(404)
+    if customer.id == current_user.id:
+        flash("You can't deactivate your own account.", "error")
+    else:
+        customer.is_active = not customer.is_active
+        db.session.commit()
+        flash("Account " + ("activated." if customer.is_active else "deactivated."), "success")
+    return redirect(url_for("admin.customer_detail", customer_id=customer.id))
+
+
+@admin_bp.route("/customers/<int:customer_id>/toggle-admin", methods=["POST"])
+@admin_required
+def customer_toggle_admin(customer_id):
+    from models import Customer
+    customer = db.session.get(Customer, customer_id) or abort(404)
+    if customer.id == current_user.id:
+        flash("You can't change your own admin status.", "error")
+    else:
+        customer.is_admin = not customer.is_admin
+        db.session.commit()
+        flash("Admin rights " + ("granted." if customer.is_admin else "revoked."), "success")
+    return redirect(url_for("admin.customer_detail", customer_id=customer.id))
+
+
+# ------------------------------------------------------------ returns
+
+@admin_bp.route("/returns")
+@admin_required
+def returns():
+    pending = (Order.query.filter(Order.return_status == "requested")
+               .order_by(Order.placed_date.desc()).all())
+    history = (Order.query.filter(Order.return_status.in_(["approved", "rejected", "refunded"]))
+               .order_by(Order.placed_date.desc()).limit(50).all())
+    return render_template("admin/returns.html", pending=pending, history=history)
+
+
+@admin_bp.route("/returns/<int:order_id>/resolve", methods=["POST"])
+@admin_required
+def return_resolve(order_id):
+    from services import restock_order
+    order = db.session.get(Order, order_id) or abort(404)
+    decision = request.form.get("decision", "")
+    if decision not in ("approved", "rejected", "refunded"):
+        flash("Unknown decision.", "error")
+        return redirect(url_for("admin.returns"))
+    order.return_status = decision
+    if decision == "refunded":
+        restock_order(order)
+        if order.payment and order.payment.status == "paid":
+            order.payment.status = "refunded"
+    db.session.commit()
+    labels = {"approved": "approved", "rejected": "declined", "refunded": "refunded"}
+    send_email(
+        order.contact_email,
+        f"Return update for order {order.order_number}",
+        f"Your return request for order {order.order_number} has been "
+        f"{labels[decision]}.\n\n— The ShopLinq Team")
+    flash(f"Return {labels[decision]}.", "success")
+    return redirect(url_for("admin.returns"))

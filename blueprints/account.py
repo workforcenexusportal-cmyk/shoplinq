@@ -10,7 +10,9 @@ from models import (
     Address, Customer, Order, PaymentMethod, Product, ProductQA, Review,
     WishlistItem,
 )
-from services import add_to_cart, remove_from_cart, unique_slug
+from services import (
+    add_to_cart, remove_from_cart, restock_order, send_email, unique_slug,
+)
 
 account_bp = Blueprint("account", __name__)
 
@@ -246,6 +248,59 @@ def order_detail(order_id):
 def track(order_id):
     order = _get_own_order(order_id)
     return render_template("account/tracking.html", order=order)
+
+
+@account_bp.route("/account/orders/<int:order_id>/cancel", methods=["POST"])
+@login_required
+def cancel_order(order_id):
+    order = _get_own_order(order_id)
+    if not order.can_cancel:
+        flash("This order can no longer be cancelled.", "error")
+        return redirect(url_for("account.order_detail", order_id=order.id))
+    order.status = "cancelled"
+    restock_order(order)
+    if order.shipping:
+        order.shipping.status = "cancelled"
+    if order.payment and order.payment.status == "paid":
+        order.payment.status = "refunded"
+    db.session.commit()
+    send_email(
+        order.contact_email,
+        f"ShopLinq order {order.order_number} cancelled",
+        f"Hi {order.customer.first_name if order.customer else 'there'},\n\n"
+        f"Your order {order.order_number} has been cancelled"
+        + (" and a refund has been issued.\n\n"
+           if order.payment and order.payment.status == "refunded"
+           else ".\n\n")
+        + "\u2014 The ShopLinq Team",
+    )
+    flash("Your order has been cancelled.", "success")
+    return redirect(url_for("account.order_detail", order_id=order.id))
+
+
+@account_bp.route("/account/orders/<int:order_id>/return", methods=["POST"])
+@login_required
+def return_order(order_id):
+    order = _get_own_order(order_id)
+    if not order.can_return:
+        flash("This order isn't eligible for a return.", "error")
+        return redirect(url_for("account.order_detail", order_id=order.id))
+    reason = request.form.get("reason", "").strip()
+    if len(reason) < 5:
+        flash("Please tell us briefly why you're returning this order.", "error")
+        return redirect(url_for("account.order_detail", order_id=order.id))
+    order.return_status = "requested"
+    order.return_reason = reason[:1000]
+    db.session.commit()
+    send_email(
+        order.contact_email,
+        f"Return requested for order {order.order_number}",
+        f"We've received your return request for order {order.order_number}.\n\n"
+        f"Reason: {reason}\n\nOur team will review it shortly.\n\n"
+        f"\u2014 The ShopLinq Team",
+    )
+    flash("Return requested — we'll email you once it's reviewed.", "success")
+    return redirect(url_for("account.order_detail", order_id=order.id))
 
 
 # ------------------------------------------------------------ reviews

@@ -21,6 +21,13 @@ STATUS_LABELS = {
     "delivered": "Delivered",
     "cancelled": "Cancelled",
 }
+RETURN_STATUS_LABELS = {
+    "none": "",
+    "requested": "Return requested",
+    "approved": "Return approved",
+    "rejected": "Return rejected",
+    "refunded": "Refunded",
+}
 
 
 class Customer(UserMixin, db.Model):
@@ -30,6 +37,7 @@ class Customer(UserMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_date = db.Column(db.DateTime, default=utcnow)
 
     addresses = db.relationship("Address", backref="customer", lazy=True,
@@ -247,9 +255,12 @@ class StockNotification(db.Model):
 class Order(db.Model):
     __tablename__ = "orders"
     id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=True, index=True)
+    guest_email = db.Column(db.String(255))
     order_number = db.Column(db.String(40), unique=True, nullable=False)
     status = db.Column(db.String(30), default="placed", nullable=False, index=True)
+    return_status = db.Column(db.String(20), default="none", nullable=False)
+    return_reason = db.Column(db.Text)
     subtotal = db.Column(db.Float, nullable=False)
     discount = db.Column(db.Float, default=0.0)
     promo_code = db.Column(db.String(40))
@@ -275,6 +286,22 @@ class Order(db.Model):
     @property
     def status_label(self):
         return STATUS_LABELS.get(self.status, self.status.title())
+
+    @property
+    def return_label(self):
+        return RETURN_STATUS_LABELS.get(self.return_status, "")
+
+    @property
+    def can_cancel(self):
+        return self.status in ("placed", "packed")
+
+    @property
+    def can_return(self):
+        return self.status == "delivered" and self.return_status in ("none", "rejected")
+
+    @property
+    def contact_email(self):
+        return self.customer.email if self.customer else self.guest_email
 
 
 class OrderItem(db.Model):

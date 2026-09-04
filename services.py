@@ -1,14 +1,17 @@
 """Shared business logic: cart, promos, orders, email-style notifications."""
+import os
 import secrets
+import smtplib
 from datetime import timedelta
 from decimal import Decimal
+from email.message import EmailMessage
 
 from flask import current_app, session
 
 from extensions import db
 from models import (
     Cart, CartItem, Category, Customer, Order, OrderItem, Payment, Product,
-    PromoCode, Shipping, utcnow,
+    PromoCode, Shipping, StockNotification, utcnow,
 )
 
 TAX_RATE = 0.08
@@ -40,9 +43,50 @@ def cache_clear():
 
 
 def send_email(to, subject, body):
-    """Email-style delivery. Uses SMTP if MAIL_* env vars are configured,
-    otherwise logs the message (demo mode)."""
-    current_app.logger.info("EMAIL to=%s | subject=%s\n%s", to, subject, body)
+    """Deliver an email.
+
+    Sends via SMTP when MAIL_SERVER is configured; otherwise (demo mode) logs
+    the message so local development and testing work without a mail server.
+    Never raises — a mail failure must not break checkout or password reset.
+    """
+    server = os.environ.get("MAIL_SERVER")
+    if not server:
+        current_app.logger.info("EMAIL (demo) to=%s | subject=%s\n%s", to, subject, body)
+        return True
+
+    sender = (os.environ.get("MAIL_DEFAULT_SENDER")
+              or os.environ.get("MAIL_USERNAME")
+              or "no-reply@shoplinq.com")
+    port = int(os.environ.get("MAIL_PORT", "587"))
+    username = os.environ.get("MAIL_USERNAME")
+    password = os.environ.get("MAIL_PASSWORD")
+    use_ssl = os.environ.get("MAIL_USE_SSL", "0") == "1"
+    use_tls = os.environ.get("MAIL_USE_TLS", "1") == "1" and not use_ssl
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = sender
+    message["To"] = to
+    message.set_content(body)
+
+    try:
+        if use_ssl:
+            smtp = smtplib.SMTP_SSL(server, port, timeout=15)
+        else:
+            smtp = smtplib.SMTP(server, port, timeout=15)
+        with smtp:
+            smtp.ehlo()
+            if use_tls:
+                smtp.starttls()
+                smtp.ehlo()
+            if username and password:
+                smtp.login(username, password)
+            smtp.send_message(message)
+        current_app.logger.info("EMAIL sent to=%s | subject=%s", to, subject)
+        return True
+    except Exception as exc:  # noqa: BLE001 — email must never break the request
+        current_app.logger.error("EMAIL failed to=%s | subject=%s | %s", to, subject, exc)
+        return False
 
 
 def slugify(text):
@@ -70,6 +114,28 @@ def get_cart_count():
     else:
         count = sum(int(q) for q in session.get("cart", {}).values())
     return count
+
+
+# ---------------------------------------------------------------- recently viewed
+
+def record_recently_viewed(product_id):
+    """Remember a product the visitor just viewed (most-recent first)."""
+    pid = int(product_id)
+    viewed = [i for i in session.get("recently_viewed", []) if i != pid]
+    viewed.insert(0, pid)
+    session["recently_viewed"] = viewed[:12]
+    session.modified = True
+
+
+def get_recently_viewed(exclude_id=None, limit=8):
+    """Return recently-viewed Product objects, most-recent first."""
+    ids = [i for i in session.get("recently_viewed", []) if i != exclude_id]
+    if not ids:
+        return []
+    ids = ids[:limit]
+    products = Product.query.filter(Product.id.in_(ids)).all()
+    by_id = {p.id: p for p in products}
+    return [by_id[i] for i in ids if i in by_id]
 
 
 def cart_lines(user):
@@ -224,12 +290,18 @@ def _shipping_estimate(delivery_method):
 
 
 def create_order(user, *, address, delivery_method, payment_method,
-                 promo_code=None, card=None):
+                 promo_code=None, card=None, guest_email=None):
     """Create Order + items + shipping + payment from the user's cart.
-    Returns (order, error). Card payment is simulated unless Stripe is configured."""
+    Returns (order, error). Card payment is simulated unless Stripe is configured.
+    ``user`` may be an anonymous user for guest checkout, in which case
+    ``guest_email`` is required."""
     summary = cart_summary(user, delivery_method, promo_code)
     if not summary["lines"]:
         return None, "Your cart is empty."
+
+    is_authenticated = bool(getattr(user, "is_authenticated", False))
+    if not is_authenticated and not guest_email:
+        return None, "Please provide an email address for your order."
 
     card = card or {}
     if payment_method == "card":
@@ -241,7 +313,8 @@ def create_order(user, *, address, delivery_method, payment_method,
 
     order_number = "SL{}-{}".format(utcnow().strftime("%Y%m%d%H%M"), secrets.token_hex(2).upper())
     order = Order(
-        customer_id=user.id,
+        customer_id=user.id if is_authenticated else None,
+        guest_email=None if is_authenticated else guest_email,
         order_number=order_number,
         status="placed",
         subtotal=summary["subtotal"],
@@ -295,7 +368,11 @@ def create_order(user, *, address, delivery_method, payment_method,
         brand = "Visa" if number.startswith("4") else (
             "Mastercard" if number.startswith("5") else "Card")
         last4 = number[-4:]
-        payment_status = "paid"  # simulated instant charge (demo mode)
+        # When Stripe is configured, payment stays pending until Stripe
+        # confirms (redirect return / webhook). Otherwise simulate instant
+        # capture for the built-in demo card flow.
+        if not current_app.config.get("STRIPE_SECRET_KEY"):
+            payment_status = "paid"
     payment = Payment(
         order_id=order.id, method=payment_method, status=payment_status,
         amount=summary["total"], card_brand=brand, last4=last4,
@@ -314,8 +391,9 @@ def send_order_confirmation(order):
         f"  - {i.quantity} x {i.product_name} (${i.unit_price:.2f} each)"
         for i in order.items
     )
+    recipient_name = order.ship_name or (order.customer.name if order.customer else "there")
     body = (
-        f"Hi {order.ship_name or order.customer.name},\n\n"
+        f"Hi {recipient_name},\n\n"
         f"Thanks for your order! Here is your confirmation.\n\n"
         f"Order number: {order.order_number}\n"
         f"Tracking number: {order.shipping.tracking_number}\n"
@@ -328,7 +406,34 @@ def send_order_confirmation(order):
         f"Track your order anytime from Your Account > Your Orders.\n\n"
         f"— The ShopLinq Team"
     )
-    send_email(order.customer.email, f"ShopLinq order {order.order_number} confirmed", body)
+    send_email(order.contact_email, f"ShopLinq order {order.order_number} confirmed", body)
+
+
+def restock_order(order):
+    """Return an order's items to inventory (used on cancellation/refund)."""
+    for item in order.items:
+        if item.product_id:
+            product = db.session.get(Product, item.product_id)
+            if product:
+                product.stock += item.quantity
+
+
+def notify_back_in_stock(product):
+    """Email everyone waiting for this product and clear their subscriptions.
+    Returns the number of notifications sent."""
+    waiting = StockNotification.query.filter_by(
+        product_id=product.id, notified=False).all()
+    sent = 0
+    for sub in waiting:
+        send_email(
+            sub.email,
+            f"\u201c{product.name}\u201d is back in stock",
+            f"Good news! \u201c{product.name}\u201d is available again.\n\n"
+            f"Grab it here before it sells out.\n\n\u2014 The ShopLinq Team",
+        )
+        sub.notified = True
+        sent += 1
+    return sent
 
 
 def create_stripe_session(order):
