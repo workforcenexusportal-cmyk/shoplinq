@@ -910,3 +910,178 @@ img[data-fade].is-loaded { opacity: 1; }
 .rounded { border-radius: var(--radius); }
 .footer-brand { display: flex; flex-direction: column; gap: 8px; }
 .footer-brand .logo { font-size: 1.5rem; }
+
+/* ============================================================
+   LANDING PAGE — value props, category showcase, CTA band
+   ============================================================ */
+
+/* eyebrow overline + section head fix */
+.eyebrow {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.16em; color: var(--accent-deep); margin: 0 0 4px;
+}
+.section-head { align-items: center; }
+
+/* value props strip */
+.value-props {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px; margin-top: 18px;
+}
+.value-prop {
+  display: flex; align-items: center; gap: 13px;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.prop-icon {
+  width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+  background: var(--accent-soft); display: flex; align-items: center; justify-content: center;
+  font-size: 1.15rem;
+}
+.value-prop strong { display: block; font-size: 0.95rem; }
+.value-prop span:not(.prop-icon) { color: var(--muted); font-size: 0.8rem; }
+
+/* category showcase */
+.cat-showcase {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;
+}
+.cat-card {
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+}
+.cat-card:hover { box-shadow: var(--shadow); border-color: transparent; transform: translateY(-3px); }
+.cat-card-head { display: flex; align-items: center; gap: 12px; text-decoration: none !important; }
+.cat-card-icon {
+  width: 44px; height: 44px; border-radius: 13px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-head); font-weight: 700; font-size: 1.05rem; color: #fff;
+  transform: rotate(-4deg);
+}
+.cat-card-name { font-family: var(--font-head); font-weight: 600; font-size: 1rem; color: var(--ink); }
+.cat-card-count { display: block; color: var(--muted); font-size: 0.76rem; }
+.cat-card-links {
+  list-style: none; margin: 12px 0 0; padding: 0 0 0 1px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.cat-card-links a { color: var(--muted); font-size: 0.87rem; text-decoration: none; display: block; padding: 3px 0; }
+.cat-card-links a:hover { color: var(--accent-deep); }
+.cat-card-links .more a { color: var(--accent-deep); font-weight: 600; }
+
+/* CTA band */
+.cta-band {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+  background: linear-gradient(118deg, #15171c 0%, #274156 62%, #0b7d6d 135%);
+  border-radius: 20px; color: #fff; padding: 30px 34px; margin: 34px 0;
+}
+.cta-band h2 { color: #fff; margin-bottom: 4px; }
+.cta-band p { color: rgba(255, 255, 255, 0.78); margin: 0; }
+.cta-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn.outline-light { background: transparent; color: #fff; border-color: rgba(255, 255, 255, 0.55); }
+.btn.outline-light:hover { background: #fff; color: var(--ink); }
+
+/* ============================================================
+   INFO PAGES
+   ============================================================ */
+.info-page { max-width: 760px; margin: 0 auto; }
+.info-lead { font-size: 1.02rem; margin-bottom: 18px; }
+.info-page h2 { font-size: 1.15rem; margin-top: 22px; }
+.info-list { margin: 8px 0; padding-left: 20px; }
+.info-list li { margin: 7px 0; }
+.info-table { margin: 10px 0; }
+.info-table td { padding: 10px 8px; }
+.info-table td:first-child { color: var(--muted); width: 45%; }
+
+/* ============================================================
+   FOOTER — contact, social, payments
+   ============================================================ */
+.footer-contact { margin-top: 16px; display: grid; gap: 10px; }
+.footer-contact p { margin: 0; font-size: 0.86rem; color: #9a9da4; }
+.footer-contact strong { color: #fff; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; }
+.footer-contact a { color: #c9cbd1; padding: 0; display: inline; }
+.footer-contact a:hover { color: var(--accent); }
+.footer-social { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+.footer-social a {
+  display: inline-flex; align-items: center; padding: 6px 13px;
+  border: 1px solid #31343c; border-radius: var(--pill);
+  font-size: 0.78rem; color: #c9cbd1;
+}
+.footer-social a:hover { border-color: var(--accent); color: var(--accent); }
+.footer-pay { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.footer-pay > span:first-child { color: #9a9da4; font-size: 0.8rem; margin-right: 4px; }
+.pay-chip {
+  display: inline-flex; align-items: center; font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.04em; color: #c9cbd1; background: var(--ink-2);
+  border: 1px solid #31343c; border-radius: 6px; padding: 3px 9px;
+}
+.footer-bottom { padding-bottom: 24px; }
+.footer-bottom p { margin: 0; }
+.footer-bottom a { display: inline; padding: 0; }
+
+/* ============================================================
+   ALIGNMENT FIXES & POLISH
+   ============================================================ */
+
+/* checkout steps: style the li elements directly (was .step, which
+   never existed in the markup — rendered as a raw list) */
+.checkout-steps { list-style: none; display: flex; align-items: center; gap: 0; margin: 0; padding: 0; width: 100%; counter-reset: stepnum; }
+.checkout-steps li {
+  flex: 1; text-align: center; font-size: 0.82rem; color: var(--muted); font-weight: 500;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  cursor: pointer; white-space: nowrap;
+}
+.checkout-steps li::before {
+  counter-increment: stepnum; content: counter(stepnum);
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--line); background: #fff; color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.76rem; font-weight: 700;
+}
+.checkout-steps li::after {
+  content: ""; flex: 1; height: 2px; background: var(--line); margin: 0 10px;
+  order: 3;
+}
+.checkout-steps li:last-child::after { display: none; }
+.checkout-steps li.active { color: var(--ink); }
+.checkout-steps li.active::before { border-color: var(--ink); background: var(--ink); color: #fff; }
+.checkout-error { color: var(--danger); font-size: 0.88rem; margin: 10px 0 0; font-weight: 500; }
+
+/* review line items: proper 3-column grid (image / name / price) */
+.review-items { list-style: none; margin: 14px 0 0; padding: 0; }
+.review-items li {
+  display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center;
+  padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem;
+}
+.review-items li:last-child { border-bottom: none; }
+.review-items img { width: 52px; height: 52px; border-radius: 10px; background: var(--paper); object-fit: contain; padding: 4px; }
+.review-items .review-item-name { font-weight: 500; }
+.review-items li > span:last-child { font-weight: 600; }
+
+/* heading rows: push the trailing link to the right edge */
+.account-head { justify-content: space-between; }
+
+/* stat tiles */
+.stat { transition: transform 0.18s, box-shadow 0.18s; }
+.stat:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.stat > span:not(.stat-num) { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; }
+.stat-num + span { display: block; margin-top: 2px; }
+
+/* account hero with avatar */
+.account-hero { display: flex; align-items: center; gap: 16px; margin: 4px 0 18px; }
+.avatar {
+  width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(120deg, var(--ink), var(--accent)); color: #fff;
+  font-family: var(--font-head); font-weight: 700; font-size: 1.35rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.account-hero h2 { margin: 0; }
+.account-hero p { margin: 2px 0 0; }
+
+/* admin quick actions */
+.quick-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.admin-note { color: var(--muted); font-size: 0.85rem; }
+
+@media (max-width: 680px) {
+  .checkout-steps li { font-size: 0; gap: 6px; }
+  .checkout-steps li.active { font-size: 0.78rem; }
+  .cta-band { padding: 24px 22px; }
+  .footer-contact { gap: 12px; }
+}

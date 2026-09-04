@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title }} — ShopLinq{% endblock %}
+{% block page_id %}info{% endblock %}
+
+{% block content %}
+<div class="breadcrumb"><a href="{{ url_for('main.index') }}">Home</a> &rsaquo; {{ page.title }}</div>
+<article class="info-page card">
+  <h1>{{ page.title }}</h1>
+  {% if page.subtitle %}<p class="info-lead muted">{{ page.subtitle }}</p>{% endif %}
+  {% for block in page.blocks %}
+    {% if block.heading %}<h2>{{ block.heading }}</h2>{% endif %}
+    {% if block.text %}<p>{{ block.text | safe }}</p>{% endif %}
+    {% if block.list %}
+    <ul class="info-list">
+      {% for item in block.list %}<li>{{ item | safe }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if block.rows %}
+    <table class="invoice-table info-table">
+      <tbody>
+      {% for row in block.rows %}<tr><td>{{ row[0] }}</td><td class="right">{{ row[1] }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  {% endfor %}
+</article>
+{% endblock %}

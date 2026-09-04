@@ -67,34 +67,6 @@
   </div>
 </header>
 
-<nav class="catbar" aria-label="Categories">
-  <div class="container catbar-inner">
-    <div class="dropdown dropdown-mega" id="all-cats">
-      <button type="button" class="catbar-all dropdown-toggle" aria-haspopup="true" aria-expanded="false">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-        All Categories
-      </button>
-      <div class="mega-menu dropdown-menu" hidden>
-        {% for c in nav_categories %}
-        <div class="mega-col">
-          <a class="mega-root" href="{{ url_for('main.products', slug=c.slug) }}">{{ c.name }}</a>
-          {% for sub in c.children %}
-          <a href="{{ url_for('main.products', slug=sub.slug) }}">{{ sub.name }}</a>
-          {% endfor %}
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    <div class="catbar-links">
-      <a href="{{ url_for('main.products') }}">All Products</a>
-      {% for c in nav_categories[:9] %}
-      <a href="{{ url_for('main.products', slug=c.slug) }}">{{ c.name }}</a>
-      {% endfor %}
-      <a href="{{ url_for('main.products', deals=1) }}" class="catbar-deals">Today&#8217;s Deals</a>
-    </div>
-  </div>
-</nav>
-
 {% block subnav %}{% endblock %}
 
 <main class="container main-content">
@@ -119,29 +91,57 @@
     <div class="footer-brand">
       <p class="logo">Shop<span>Linq</span></p>
       <p class="footer-tag">Everything you need, delivered.</p>
+      <div class="footer-contact">
+        <p><strong>Support</strong><br><a href="mailto:support@shoplinq.com">support@shoplinq.com</a></p>
+        <p><strong>Phone</strong><br><a href="tel:+15550102030">+1 (555) 010-2030</a></p>
+        <p><strong>Hours</strong><br>Mon&ndash;Fri, 9:00&ndash;18:00 ET</p>
+        <p><strong>HQ</strong><br>123 Market Street, Suite 400<br>Springfield, IL 62704, USA</p>
+      </div>
+      <div class="footer-social">
+        <a href="https://instagram.com" aria-label="Instagram" rel="noopener">Instagram</a>
+        <a href="https://x.com" aria-label="X" rel="noopener">X</a>
+        <a href="https://facebook.com" aria-label="Facebook" rel="noopener">Facebook</a>
+        <a href="https://youtube.com" aria-label="YouTube" rel="noopener">YouTube</a>
+      </div>
     </div>
     <div class="footer-col">
       <h4>Shop</h4>
-      {% for c in nav_categories[:4] %}
+      <a href="{{ url_for('main.products') }}">All Products</a>
+      <a href="{{ url_for('main.products', deals=1) }}">Today&rsquo;s Deals</a>
+      {% for c in nav_categories[:5] %}
       <a href="{{ url_for('main.products', slug=c.slug) }}">{{ c.name }}</a>
       {% endfor %}
     </div>
     <div class="footer-col">
-      <h4>Your Account</h4>
-      <a href="{{ url_for('account.dashboard') }}">Your Account</a>
-      <a href="{{ url_for('account.orders') }}">Your Orders</a>
-      <a href="{{ url_for('account.wishlist') }}">Wishlist</a>
-      <a href="{{ url_for('cart.view') }}">Cart</a>
+      <h4>Customer Service</h4>
+      <a href="{{ url_for('account.orders') }}">Track Your Order</a>
+      <a href="{{ url_for('main.info', page='shipping') }}">Shipping &amp; Delivery</a>
+      <a href="{{ url_for('main.info', page='returns-policy') }}">Returns &amp; Refunds</a>
+      <a href="{{ url_for('main.info', page='faq') }}">FAQ</a>
+      <a href="{{ url_for('main.info', page='contact') }}">Contact Us</a>
     </div>
     <div class="footer-col">
-      <h4>Help</h4>
-      <a href="#">Shipping &amp; Delivery</a>
-      <a href="#">Returns Policy</a>
-      <a href="#">Contact Us</a>
+      <h4>Company</h4>
+      <a href="{{ url_for('main.info', page='about') }}">About ShopLinq</a>
+      <a href="{{ url_for('main.info', page='privacy') }}">Privacy Policy</a>
+      <a href="{{ url_for('main.info', page='terms') }}">Terms of Service</a>
+      <a href="{{ url_for('account.dashboard') }}">Your Account</a>
+      <a href="{{ url_for('account.wishlist') }}">Wishlist</a>
     </div>
   </div>
   <div class="container footer-bottom">
-    <p>&copy; 2026 ShopLinq. Demo store built with Flask.</p>
+    <div class="footer-pay">
+      <span>We accept</span>
+      <span class="pay-chip">VISA</span>
+      <span class="pay-chip">Mastercard</span>
+      <span class="pay-chip">AMEX</span>
+      <span class="pay-chip">PayPal</span>
+      <span class="pay-chip">Cash on Delivery</span>
+    </div>
+    <p>&copy; 2026 ShopLinq Inc. All rights reserved. &middot;
+      <a href="{{ url_for('main.info', page='privacy') }}">Privacy</a> &middot;
+      <a href="{{ url_for('main.info', page='terms') }}">Terms</a> &middot;
+      Demo store &mdash; no real orders are fulfilled.</p>
   </div>
 </footer>
 

@@ -476,7 +476,52 @@
       }
     }
 
-    if (nextBtn) nextBtn.addEventListener("click", function () { if (current < TOTAL) show(current + 1); });
+    var errEl = $("#checkout-error");
+    function fail(msg) {
+      if (errEl) { errEl.textContent = msg; errEl.hidden = false; }
+      return false;
+    }
+    function clearError() { if (errEl) errEl.hidden = true; }
+
+    function filled(name) {
+      var el = $('input[name="' + name + '"]');
+      return !!el && el.value.trim() !== "";
+    }
+
+    function validatePanel(n) {
+      if (n === 1) {
+        var guest = $("#guest-email-wrap");
+        if (guest && !guest.hidden) {
+          var em = $('input[name="guest_email"]');
+          if (!em || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em.value.trim()))
+            return fail("Please enter a valid email address so we can send your order confirmation.");
+        }
+        var choice = ($('input[name="address_choice"]:checked') || {}).value;
+        if (choice === "new") {
+          var need = ["full_name", "line1", "city", "state", "postal_code", "country"];
+          for (var i = 0; i < need.length; i++) {
+            if (!filled(need[i]))
+              return fail("Please complete your shipping address before continuing.");
+          }
+        }
+      }
+      if (n === 3) {
+        var pay = ($('input[name="payment"]:checked') || {}).value;
+        if (pay === "card") {
+          var need = ["card_name", "card_number", "exp_month", "exp_year", "cvc"];
+          for (var j = 0; j < need.length; j++) {
+            if (!filled(need[j]))
+              return fail("Please fill in all card details, or choose cash on delivery.");
+          }
+        }
+      }
+      clearError();
+      return true;
+    }
+
+    if (nextBtn) nextBtn.addEventListener("click", function () {
+      if (current < TOTAL && validatePanel(current)) show(current + 1);
+    });
     if (prevBtn) prevBtn.addEventListener("click", function () { if (current > 1) show(current - 1); });
     steps.forEach(function (s) {
       s.addEventListener("click", function () {
@@ -486,7 +531,8 @@
     });
     if (placeBtn2) placeBtn2.addEventListener("click", function () { form.submit(); });
 
-    form.addEventListener("submit", function () {
+    form.addEventListener("submit", function (e) {
+      if (!validatePanel(1) || !validatePanel(3)) { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
       if (!placeBtn.hidden) {
         placeBtn.textContent = "Placing your order…";
         setLoading(placeBtn);

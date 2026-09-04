@@ -1,5 +1,5 @@
 """Main catalog routes: homepage, product listing, product detail."""
-from flask import Blueprint, render_template, request
+from flask import Blueprint, abort, render_template, request
 from flask_login import current_user
 
 from extensions import db
@@ -126,3 +126,172 @@ def product(slug):
         reviews=reviews, my_review=my_review, qa=p.questions,
         recently_viewed=recently_viewed,
     )
+
+
+# ------------------------------------------------------------------
+# Static info pages (about, shipping, returns, FAQ, contact, legal)
+# ------------------------------------------------------------------
+INFO_PAGES = {
+    "about": {
+        "title": "About ShopLinq",
+        "subtitle": "A marketplace built around one idea: everything you need, delivered well.",
+        "blocks": [
+            {"text": "ShopLinq started in 2024 as a small marketplace with a simple promise "
+                     "&mdash; honest prices, fast delivery, and a shopping experience that "
+                     "respects your time. Today we list thousands of products across 22 "
+                     "departments, from electronics to garden supplies."},
+            {"heading": "What we stand for",
+             "list": [
+                 "<strong>Fair pricing.</strong> Deals you can actually verify &mdash; every "
+                 "discount is shown against the real list price.",
+                 "<strong>Fast, tracked delivery.</strong> Standard delivery in 5 business "
+                 "days, express in 2, with a tracking timeline on every order.",
+                 "<strong>Easy returns.</strong> 30 days to change your mind, prepaid return "
+                 "labels, refunds processed within 3 business days.",
+                 "<strong>Human support.</strong> Real people answer email and phone, "
+                 "Monday to Friday.",
+             ]},
+            {"heading": "By the numbers",
+             "rows": [("Products listed", "5,000+"), ("Product categories", "250+"),
+                      ("Customers served", "120,000+"), ("Countries shipped to", "38"),
+                      ("Average rating", "4.6 / 5")]},
+        ],
+    },
+    "shipping": {
+        "title": "Shipping & Delivery",
+        "subtitle": "Where your order is, and when it gets there.",
+        "blocks": [
+            {"heading": "Delivery options",
+             "rows": [("Standard delivery", "5 business days &mdash; FREE over $50, otherwise $6.99"),
+                      ("Express delivery", "2 business days &mdash; $14.99"),
+                      ("Cash on delivery", "Available on orders up to $500")]},
+            {"heading": "Order processing",
+             "text": "Orders placed before 14:00 ET are picked and packed the same day. "
+                     "You receive a confirmation email immediately and a tracking "
+                     "number as soon as the parcel leaves our fulfillment center."},
+            {"heading": "Things to know",
+             "list": [
+                 "We currently ship to all 50 US states and 37 other countries.",
+                 "Large items (furniture, gym equipment) may add 2&ndash;4 days.",
+                 "PO boxes: standard delivery only, no express.",
+                 "Delivery timelines exclude public holidays.",
+             ]},
+        ],
+    },
+    "returns-policy": {
+        "title": "Returns & Refunds",
+        "subtitle": "Changed your mind? No problem.",
+        "blocks": [
+            {"heading": "The short version",
+             "text": "You have 30 days from delivery to return almost anything. Items must "
+                     "be unused and in original packaging. Refunds are issued to your "
+                     "original payment method within 3 business days of the return "
+                     "arriving at our warehouse."},
+            {"heading": "How to return an item",
+             "list": [
+                 "Open <strong>Your Orders</strong> in your account and pick the order.",
+                 "Click <strong>Request return</strong>, choose a reason, and submit.",
+                 "Print the prepaid label from the confirmation email.",
+                 "Drop the parcel at any partner location &mdash; tracking starts automatically.",
+             ]},
+            {"heading": "Exceptions",
+             "list": [
+                 "Grocery and personal-care items can only be returned unopened.",
+                 "Customized products are final sale.",
+                 "Damaged or wrong item? We refund instantly and cover the return.",
+             ]},
+        ],
+    },
+    "faq": {
+        "title": "Frequently Asked Questions",
+        "subtitle": "The questions our support team hears most.",
+        "blocks": [
+            {"heading": "Do I need an account to order?",
+             "text": "No &mdash; guest checkout works with just an email address. An account "
+                     "gives you order history, saved addresses, wishlist, and faster checkout."},
+            {"heading": "Which payment methods do you accept?",
+             "text": "Visa, Mastercard, American Express, PayPal, and cash on delivery "
+                     "(orders up to $500). Card details are never stored on our servers."},
+            {"heading": "Can I change or cancel my order?",
+             "text": "You can cancel from Your Orders until the status changes to "
+                     "Packed. After that, refuse the parcel or use the free returns process."},
+            {"heading": "How do promo codes work?",
+             "text": "Enter the code in your cart and the discount applies to eligible "
+                     "items immediately. One promo per order; deals and promos don't stack."},
+            {"heading": "Is my data safe?",
+             "text": "Traffic is encrypted end-to-end, payments are processed by our "
+                     "payment provider, and we never sell personal data. See the "
+                     "Privacy Policy for details."},
+        ],
+    },
+    "contact": {
+        "title": "Contact Us",
+        "subtitle": "We answer every message — usually within one business day.",
+        "blocks": [
+            {"heading": "Talk to a human",
+             "rows": [("Email", '<a href="mailto:support@shoplinq.com">support@shoplinq.com</a>'),
+                      ("Phone", '<a href="tel:+15550102030">+1 (555) 010-2030</a>'),
+                      ("Hours", "Mon&ndash;Fri, 9:00&ndash;18:00 ET"),
+                      ("Address", "123 Market Street, Suite 400, Springfield, IL 62704, USA")]},
+            {"heading": "Order support",
+             "text": "Have your order number ready (it looks like SLQ-2026-1234) — it helps "
+                     "us find your parcel in seconds. You can also track every order "
+                     "yourself from <strong>Your Orders</strong>."},
+            {"heading": "Business inquiries",
+             "text": "Want to sell on ShopLinq or partner with us? Write to "
+                     "<a href=\"mailto:partners@shoplinq.com\">partners@shoplinq.com</a>."},
+        ],
+    },
+    "privacy": {
+        "title": "Privacy Policy",
+        "subtitle": "Last updated: September 2026",
+        "blocks": [
+            {"heading": "What we collect",
+             "list": [
+                 "Account details: name, email, and (optionally) saved addresses.",
+                 "Order data: items, totals, delivery choice, and order status.",
+                 "Technical basics: session cookie and CSRF token, to keep you logged in safely.",
+             ]},
+            {"heading": "What we never do",
+             "list": [
+                 "Sell or rent your personal data to anyone.",
+                 "Store full card numbers &mdash; payments run through our payment provider.",
+                 "Track you across other websites.",
+             ]},
+            {"heading": "Your rights",
+             "text": "You can request a copy of your data, correct it, or delete your "
+                     "account entirely. Email <a href=\"mailto:privacy@shoplinq.com\">"
+                     "privacy@shoplinq.com</a> and we action requests within 30 days."},
+        ],
+    },
+    "terms": {
+        "title": "Terms of Service",
+        "subtitle": "Last updated: September 2026",
+        "blocks": [
+            {"heading": "Using ShopLinq",
+             "text": "By placing an order you confirm the details you give are accurate "
+                     "and that you're authorized to use the chosen payment method. "
+                     "Prices are shown in USD and include applicable taxes at checkout."},
+            {"heading": "Orders & pricing",
+             "list": [
+                 "An order is a contract only once we confirm it by email.",
+                 "We may cancel and refund orders affected by obvious pricing errors.",
+                 "Stock is reserved at the moment your payment is confirmed.",
+             ]},
+            {"heading": "Liability",
+             "text": "ShopLinq's liability for any order is limited to the order total. "
+                     "Nothing in these terms limits your statutory consumer rights."},
+            {"heading": "Note",
+             "text": "ShopLinq is a demo application. No real goods are sold and no real "
+                     "payments are captured."},
+        ],
+    },
+}
+
+
+@main_bp.route("/info/<page>")
+def info(page):
+    content = INFO_PAGES.get(page)
+    if not content:
+        abort(404)
+    return render_template("info.html", page=content)

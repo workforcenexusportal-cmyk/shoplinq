@@ -17,8 +17,13 @@
 {% block content %}
 <div class="account-grid">
   <section class="account-card card account-wide">
-    <h2 class="account-hello">Hi, {{ current_user.first_name }}!</h2>
-    <p class="muted">Welcome to your ShopLinq account{% if current_user.is_admin %} — you also have <a href="{{ url_for('admin.index') }}">admin access</a> from here{% endif %}.</p>
+    <div class="account-hero">
+      <span class="avatar" aria-hidden="true">{{ current_user.first_name[0]|upper }}</span>
+      <div>
+        <h2 class="account-hello">Hi, {{ current_user.first_name }}!</h2>
+        <p class="muted">Welcome to your ShopLinq account{% if current_user.is_admin %} — you also have <a href="{{ url_for('admin.index') }}">admin access</a> from here{% endif %}.</p>
+      </div>
+    </div>
     <div class="stat-tiles">
       <div class="stat"><span class="stat-num">{{ my_stats.orders }}</span><span>orders</span></div>
       <div class="stat"><span class="stat-num">{{ my_stats.items }}</span><span>items purchased</span></div>

@@ -7,6 +7,14 @@
 {% block content %}
 <h1 class="page-title">Admin dashboard</h1>
 
+<div class="quick-actions">
+  <a class="btn btn-teal btn-sm" href="{{ url_for('admin.product_new') }}">+ New product</a>
+  <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.orders') }}">Manage orders</a>
+  <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.analytics') }}">Sales analytics</a>
+  <a class="btn btn-outline btn-sm" href="{{ url_for('admin.categories') }}">Categories</a>
+  <a class="btn btn-outline btn-sm" href="{{ url_for('admin.promos') }}">Promos</a>
+</div>
+
 <div class="stat-tiles admin-stats">
   <div class="stat card"><span class="stat-num">{{ stats.customers }}</span><span>customers</span></div>
   <div class="stat card"><span class="stat-num">{{ stats.products }}</span><span>products</span></div>

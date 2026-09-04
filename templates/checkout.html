@@ -133,11 +133,12 @@
       <button type="button" class="btn btn-primary" id="checkout-next">Continue &rarr;</button>
       <button type="submit" class="btn btn-teal btn-lg" id="place-order" hidden>Place your order</button>
       <span class="checkout-loader muted" id="checkout-loader" hidden>Placing your order…</span>
+      <p class="checkout-error" id="checkout-error" hidden></p>
     </div>
   </div>
 
   <aside class="checkout-summary card">
-    <button type="button" class="btn btn-outline btn-sm" id="place-order-2">Place your order</button>
+    <button type="button" class="btn btn-outline btn-sm" id="place-order-2" hidden>Place your order</button>
     <p class="muted order-hint">By placing your order you agree to ShopLinq's demo terms.</p>
     <dl class="totals">
       <div><dt>Items ({{ summary.count }})</dt><dd>{{ summary.subtotal|money }}</dd></div>

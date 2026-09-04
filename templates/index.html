@@ -37,22 +37,60 @@
   </div>
 </section>
 
+<section class="value-props" aria-label="Why shop with us">
+  <div class="value-prop">
+    <span class="prop-icon">&#128666;</span>
+    <div><strong>Fast delivery</strong><span>Free over $50 · 5-day standard</span></div>
+  </div>
+  <div class="value-prop">
+    <span class="prop-icon">&#8635;</span>
+    <div><strong>30-day returns</strong><span>Prepaid labels · fast refunds</span></div>
+  </div>
+  <div class="value-prop">
+    <span class="prop-icon">&#128274;</span>
+    <div><strong>Secure payment</strong><span>Cards, PayPal &amp; cash on delivery</span></div>
+  </div>
+  <div class="value-prop">
+    <span class="prop-icon">&#128172;</span>
+    <div><strong>Real support</strong><span>Mon&ndash;Fri, 9:00&ndash;18:00 ET</span></div>
+  </div>
+</section>
+
 <section class="section">
-  <h2 class="section-title">Shop by category</h2>
-  <div class="category-tiles">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Browse the marketplace</p>
+      <h2 class="section-title">Shop by department</h2>
+    </div>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('main.products') }}">View all products &rarr;</a>
+  </div>
+  <div class="cat-showcase">
     {% for c in nav_categories %}
-    <a class="category-tile" href="{{ url_for('main.products', slug=c.slug) }}">
-      <span class="tile-icon tile-{{ loop.index0 % 6 }}">{{ c.name[0] }}</span>
-      <span class="tile-name">{{ c.name }}</span>
-      <span class="tile-count">{{ c.children|length + 0 }} subcategories</span>
-    </a>
+    <div class="cat-card">
+      <a class="cat-card-head" href="{{ url_for('main.products', slug=c.slug) }}">
+        <span class="cat-card-icon tile-{{ loop.index0 % 6 }}">{{ c.name[0] }}</span>
+        <span class="cat-card-name">{{ c.name }}</span>
+        <span class="cat-card-count">{{ c.children|length }} subcategories</span>
+      </a>
+      <ul class="cat-card-links">
+        {% for sub in c.children[:4] %}
+        <li><a href="{{ url_for('main.products', slug=sub.slug) }}">{{ sub.name }}</a></li>
+        {% endfor %}
+        {% if c.children|length > 4 %}
+        <li class="more"><a href="{{ url_for('main.products', slug=c.slug) }}">+{{ c.children|length - 4 }} more</a></li>
+        {% endif %}
+      </ul>
+    </div>
     {% endfor %}
   </div>
 </section>
 
 <section class="section">
   <div class="section-head">
-    <h2 class="section-title">Deals of the Day</h2>
+    <div>
+      <p class="eyebrow">Limited time</p>
+      <h2 class="section-title">Deals of the day</h2>
+    </div>
     <p class="deal-countdown">Ends in <span id="deal-countdown">--:--:--</span></p>
   </div>
   {% if deals %}
@@ -65,17 +103,35 @@
 </section>
 
 <section class="section">
-  <h2 class="section-title">Recommended for you</h2>
-  <div class="product-grid">
-    {% for p in recommended[:6] %}{{ product_card(p) }}{% endfor %}
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Picked for you</p>
+      <h2 class="section-title">Recommended</h2>
+    </div>
   </div>
   <div class="product-grid">
-    {% for p in recommended[6:12] %}{{ product_card(p) }}{% endfor %}
+    {% for p in recommended[:12] %}{{ product_card(p) }}{% endfor %}
+  </div>
+</section>
+
+<section class="cta-band" aria-label="Create an account">
+  <div>
+    <h2>Shop smarter with a free account</h2>
+    <p>Order history, saved addresses, wishlist, and one-click returns.</p>
+  </div>
+  <div class="cta-actions">
+    <a class="btn btn-light btn-lg" href="{{ url_for('main.products') }}">Browse products</a>
+    <a class="btn btn-outline btn-lg outline-light" href="{{ url_for('auth.register') }}">Create account</a>
   </div>
 </section>
 
 <section class="section">
-  <h2 class="section-title">New arrivals</h2>
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Fresh off the shelf</p>
+      <h2 class="section-title">New arrivals</h2>
+    </div>
+  </div>
   <div class="product-grid">
     {% for p in new_arrivals %}{{ product_card(p) }}{% endfor %}
   </div>
@@ -83,7 +139,12 @@
 
 {% if recently_viewed %}
 <section class="section">
-  <h2 class="section-title">Recently viewed</h2>
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Pick up where you left off</p>
+      <h2 class="section-title">Recently viewed</h2>
+    </div>
+  </div>
   <div class="product-grid">
     {% for p in recently_viewed %}{{ product_card(p) }}{% endfor %}
   </div>
