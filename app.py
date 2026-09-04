@@ -202,7 +202,43 @@ def create_app():
     return app
 
 
+def _bootstrap_local_env():
+    """Zero-config first run: create a local .env for `python app.py`.
+
+    Only ever used by the dev server entry point. Production (wsgi.py) is
+    unaffected and still requires an explicit SECRET_KEY.
+    """
+    if os.environ.get("SECRET_KEY"):
+        return
+    if os.path.exists(".env"):
+        print(
+            "WARNING: SECRET_KEY is not set and .env exists but has no key.\n"
+            "         Edit .env and add a real SECRET_KEY, e.g.:\n"
+            "         python -c \"import secrets; print('SECRET_KEY=' + secrets.token_hex(32))\" >> .env"
+        )
+        return
+    key = secrets.token_hex(32)
+    with open(".env", "w", encoding="utf-8") as f:
+        f.write(
+            "# Auto-generated for local development by `python app.py`.\n"
+            "# Set real values before deploying (see .env.example).\n"
+            f"SECRET_KEY={key}\n"
+            "FLASK_DEBUG=1\n"
+            "DEMO_MODE=1\n"
+            "DATABASE_URL=sqlite:///shoplinq.db\n"
+            "SESSION_COOKIE_SECURE=0\n"
+        )
+    # Make this very process use the fresh values (dotenv already ran at import).
+    os.environ["SECRET_KEY"] = key
+    os.environ["FLASK_DEBUG"] = "1"
+    os.environ.setdefault("DEMO_MODE", "1")
+    os.environ.setdefault("SESSION_COOKIE_SECURE", "0")
+    print("Created .env with a generated SECRET_KEY (local development mode).")
+    print("Run `python seed.py` to fill the database with demo data.")
+
+
 if __name__ == "__main__":
+    _bootstrap_local_env()
     app = create_app()
     with app.app_context():
         db.create_all()
