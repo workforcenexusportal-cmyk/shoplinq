@@ -105,10 +105,15 @@ def create_app():
     app.config["DEMO_MODE"] = os.environ.get("DEMO_MODE", "1") != "0"
 
     # --- session / cookie hardening ---
+    # Secure cookies require HTTPS; default to on in production, off in debug.
+    # Override with SESSION_COOKIE_SECURE=0/1 (set 0 if serving plain HTTP).
+    cookie_secure = os.environ.get("SESSION_COOKIE_SECURE")
+    if cookie_secure is None:
+        cookie_secure = "0" if app.debug else "1"
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=not app.debug,  # HTTPS-only cookies in production
+        SESSION_COOKIE_SECURE=cookie_secure == "1",
         PERMANENT_SESSION_LIFETIME=timedelta(days=14),
         MAX_CONTENT_LENGTH=8 * 1024 * 1024,  # 8 MB request cap
     )

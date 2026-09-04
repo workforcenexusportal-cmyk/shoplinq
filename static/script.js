@@ -35,7 +35,12 @@
 
   function updateBadge(count) {
     var badge = $("#cart-badge");
-    if (badge && typeof count === "number") badge.textContent = count;
+    if (badge && typeof count === "number") {
+      badge.textContent = count;
+      badge.classList.remove("pop");
+      void badge.offsetWidth; // restart the animation
+      badge.classList.add("pop");
+    }
   }
 
   function postJSON(url, data) {
@@ -167,6 +172,9 @@
       track.style.transform = "translateX(-" + index * 100 + "%)";
       $$(".hero-dot", carousel).forEach(function (d, di) {
         d.classList.toggle("active", di === index);
+      });
+      slides.forEach(function (s, si) {
+        s.classList.toggle("hero-slide-active", si === index);
       });
     }
     function restart() { clearInterval(auto); auto = setInterval(function () { go(index + 1); }, 5500); }
@@ -488,6 +496,35 @@
     });
 
     show(1);
+  })();
+
+  /* ---------- image fade-in (shimmer -> reveal) ---------- */
+  (function initImageFade() {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    function mark(img) { img.classList.add("is-loaded"); img.removeAttribute("data-fade"); }
+    document.querySelectorAll("img").forEach(function (img) {
+      if (img.complete && img.naturalWidth > 0) { mark(img); return; }
+      img.setAttribute("data-fade", "");
+      img.addEventListener("load", function () { mark(img); });
+      img.addEventListener("error", function () { img.classList.add("is-loaded"); img.removeAttribute("data-fade"); });
+    });
+  })();
+
+  /* ---------- scroll-to-top button ---------- */
+  (function initToTop() {
+    var btn = document.createElement("button");
+    btn.className = "to-top";
+    btn.setAttribute("aria-label", "Back to top");
+    btn.innerHTML = "&uarr;";
+    document.body.appendChild(btn);
+    var onScroll = function () {
+      btn.classList.toggle("visible", window.scrollY > 400);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    btn.addEventListener("click", function () {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   })();
 
   /* ---------- listing filters auto-submit ---------- */
