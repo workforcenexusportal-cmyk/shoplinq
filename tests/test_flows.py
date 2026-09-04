@@ -56,9 +56,9 @@ def test_csrf_blocks_api_post(client):
     assert resp.status_code == 403
 
 
-# ------------------------------------------------------------ cart + guest checkout
+# ------------------------------------------------------------ cart + checkout (login required)
 
-def test_add_to_cart_and_guest_checkout(client):
+def test_add_to_cart_and_checkout_requires_login(client):
     token = csrf(client)
     resp = client.post("/api/cart/add",
                        json={"product_id": 1, "quantity": 2},
@@ -66,10 +66,23 @@ def test_add_to_cart_and_guest_checkout(client):
     assert resp.status_code == 200
     assert resp.get_json()["ok"] is True
 
+    # logged out: /checkout redirects to login with a next param
+    resp = client.get("/checkout", follow_redirects=False)
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+    # logged out: placing an order is rejected too
+    resp = client.post("/checkout/place", data={"csrf_token": token},
+                      follow_redirects=False)
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+    # after signing in, the order can be placed
+    login(client, "jane@test.com", "janepass")
     place = client.post("/checkout/place", data={
         "csrf_token": token,
-        "guest_email": "guest@test.com",
-        "full_name": "Guest Shopper",
+        "address_choice": "new",
+        "full_name": "Jane Shopper",
         "line1": "1 Test St",
         "city": "Testville",
         "postal_code": "12345",

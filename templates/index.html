@@ -31,6 +31,15 @@
         </div>
       </div>
     </div>
+    <div class="hero-art" aria-hidden="true">
+      {% for p in deals[:3] %}
+      <a class="hero-chip hero-chip-{{ loop.index }}" href="{{ url_for('main.product', slug=p.slug) }}">
+        {% if p.primary_image %}<img src="{{ p.primary_image.url }}" alt="">{% endif %}
+        <span class="hero-chip-name">{{ p.name[:26] }}{% if p.name|length > 26 %}&hellip;{% endif %}</span>
+        <span class="hero-chip-price">{{ p.effective_price|money }}</span>
+      </a>
+      {% endfor %}
+    </div>
     <button class="hero-arrow hero-prev" type="button" aria-label="Previous slide">&#10094;</button>
     <button class="hero-arrow hero-next" type="button" aria-label="Next slide">&#10095;</button>
     <div class="hero-dots" id="hero-dots"></div>
@@ -54,6 +63,14 @@
     <span class="prop-icon">&#128172;</span>
     <div><strong>Real support</strong><span>Mon&ndash;Fri, 9:00&ndash;18:00 ET</span></div>
   </div>
+</section>
+
+<section class="proof-band" aria-label="ShopLinq in numbers">
+  <div class="proof"><strong>5,000+</strong><span>products in stock</span></div>
+  <div class="proof"><strong>22</strong><span>departments</span></div>
+  <div class="proof"><strong>120k+</strong><span>happy customers</span></div>
+  <div class="proof"><strong>4.6 / 5</strong><span>average rating</span></div>
+  <div class="proof"><strong>30-day</strong><span>free returns</span></div>
 </section>
 
 <section class="section">
@@ -114,14 +131,51 @@
   </div>
 </section>
 
+<section class="section">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Shoppers talking</p>
+      <h2 class="section-title">What customers say</h2>
+    </div>
+  </div>
+  <div class="testimonials">
+    <figure class="testimonial">
+      <blockquote>&ldquo;Ordered on Tuesday, parcel in my hands on Friday, and the tracking timeline was accurate to the hour. This is how online shopping should feel.&rdquo;</blockquote>
+      <figcaption>
+        <span class="avatar sm" aria-hidden="true">M</span>
+        <span><strong>Maya C.</strong><span class="muted">Verified buyer &middot; Electronics</span></span>
+      </figcaption>
+    </figure>
+    <figure class="testimonial">
+      <blockquote>&ldquo;The return took me four clicks and a prepaid label. Refund landed the day they received it. I do all my kitchen shopping here now.&rdquo;</blockquote>
+      <figcaption>
+        <span class="avatar sm" aria-hidden="true">J</span>
+        <span><strong>Jonas W.</strong><span class="muted">Verified buyer &middot; Home &amp; Kitchen</span></span>
+      </figcaption>
+    </figure>
+    <figure class="testimonial">
+      <blockquote>&ldquo;Real people answer the phone. They tracked down a delayed parcel for me and threw in a promo code for the trouble.&rdquo;</blockquote>
+      <figcaption>
+        <span class="avatar sm" aria-hidden="true">P</span>
+        <span><strong>Priya N.</strong><span class="muted">Verified buyer &middot; Sports</span></span>
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
 <section class="cta-band" aria-label="Create an account">
   <div>
     <h2>Shop smarter with a free account</h2>
-    <p>Order history, saved addresses, wishlist, and one-click returns.</p>
+    <ul class="cta-perks">
+      <li>Order history &amp; live tracking on every purchase</li>
+      <li>Saved addresses for one-click checkout</li>
+      <li>Wishlist to keep an eye on prices</li>
+      <li>Hassle-free, self-service returns</li>
+    </ul>
   </div>
   <div class="cta-actions">
     <a class="btn btn-light btn-lg" href="{{ url_for('main.products') }}">Browse products</a>
-    <a class="btn btn-outline btn-lg outline-light" href="{{ url_for('auth.register') }}">Create account</a>
+    <a class="btn btn-outline btn-lg outline-light" href="{{ url_for('auth.register') }}">Create free account</a>
   </div>
 </section>
 

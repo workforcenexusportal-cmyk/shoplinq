@@ -3,7 +3,7 @@ from flask import (
     Blueprint, abort, current_app, flash, redirect, render_template,
     request, session, url_for,
 )
-from flask_login import current_user
+from flask_login import current_user, login_required
 
 from extensions import db
 from models import Address, Order
@@ -31,16 +31,15 @@ def view():
 
 @cart_bp.route("/checkout")
 def checkout():
+    if not current_user.is_authenticated:
+        flash("Please sign in or create an account to place your order.", "info")
+        return redirect(url_for("auth.login", next=url_for("cart.checkout")))
     summary = _summary()
     if not summary["lines"]:
         flash("Your cart is empty — add some products first.", "info")
         return redirect(url_for("cart.view"))
-    if current_user.is_authenticated:
-        addresses = Address.query.filter_by(customer_id=current_user.id).all()
-        selected_address = addresses[0] if addresses else None
-    else:
-        addresses = []
-        selected_address = None
+    addresses = Address.query.filter_by(customer_id=current_user.id).all()
+    selected_address = addresses[0] if addresses else None
     return render_template(
         "checkout.html", summary=summary, addresses=addresses,
         selected_address=selected_address,
@@ -75,15 +74,6 @@ def _resolve_address():
     return fields, None
 
 
-def _remember_guest_order(order_number):
-    """Track a guest's order numbers in the session so they can view it."""
-    orders = session.get("guest_orders", [])
-    if order_number not in orders:
-        orders.append(order_number)
-        session["guest_orders"] = orders[-20:]
-        session.modified = True
-
-
 def _get_viewable_order(order_number):
     """Return an order the current visitor is allowed to see, or 404."""
     order = Order.query.filter_by(order_number=order_number).first_or_404()
@@ -95,17 +85,12 @@ def _get_viewable_order(order_number):
 
 
 @cart_bp.route("/checkout/place", methods=["POST"])
+@login_required
 def place():
     address, err = _resolve_address()
     if err:
         flash(err, "error")
         return redirect(url_for("cart.checkout"))
-    guest_email = None
-    if not current_user.is_authenticated:
-        guest_email = request.form.get("guest_email", "").strip().lower()
-        if "@" not in guest_email or "." not in guest_email:
-            flash("Please enter a valid email address for your order.", "error")
-            return redirect(url_for("cart.checkout"))
     delivery = request.form.get("delivery", "standard")
     if delivery not in ("standard", "express"):
         delivery = "standard"
@@ -121,14 +106,12 @@ def place():
     order, err = create_order(
         current_user, address=address, delivery_method=delivery,
         payment_method=payment_method,
-        promo_code=session.get("promo"), card=card, guest_email=guest_email,
+        promo_code=session.get("promo"), card=card,
     )
     if err:
         flash(err, "error")
         return redirect(url_for("cart.checkout"))
     clear_cart(current_user)
-    if order.customer_id is None:
-        _remember_guest_order(order.order_number)
 
     # If Stripe is configured and the customer chose card, redirect to Stripe Checkout.
     if payment_method == "card" and current_app.config.get("STRIPE_SECRET_KEY"):

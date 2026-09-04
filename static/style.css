@@ -1085,3 +1085,127 @@ img[data-fade].is-loaded { opacity: 1; }
   .cta-band { padding: 24px 22px; }
   .footer-contact { gap: 12px; }
 }
+
+/* ============================================================
+   FORM & DETAIL ALIGNMENT FIXES (round 3)
+   ============================================================ */
+
+/* radios/checkboxes: never inherit the text-input treatment */
+input[type="radio"], input[type="checkbox"] {
+  width: auto; height: auto; padding: 0; border: none; border-radius: 0;
+  background: none; accent-color: var(--accent); cursor: pointer;
+}
+
+/* label-wrapped inputs: stack under the label text, full width */
+label > input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
+label > select, label > textarea {
+  display: block; width: 100%; margin-top: 5px;
+}
+label.checkbox-row > input { margin: 0; }
+dd { margin: 0; }
+
+/* star ratings: filled vs empty */
+.stars { white-space: nowrap; }
+.star { color: #dcd8cd; }
+.star.filled { color: var(--amber); }
+
+/* review form: give fields vertical rhythm */
+.review-form > input[type="text"],
+.review-form > textarea { width: 100%; margin-top: 12px; }
+.review-form .btn { margin-top: 12px; }
+
+/* star picker: clickable stars, hidden radios */
+.star-picker input[type="radio"] { display: none; }
+.star-picker label {
+  cursor: pointer; opacity: 0.35; color: var(--amber);
+  transition: opacity 0.1s, transform 0.1s;
+}
+.star-picker label.on, .star-picker label:hover { opacity: 1; }
+.star-picker label.on:hover { transform: scale(1.1); }
+
+/* review header: stars + title on one tidy line */
+.review-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.review-head .stars { order: 2; }
+
+/* review summary: big number + stars, centered */
+.review-avg { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.review-avg .stars { font-size: 1.1rem; }
+
+/* order confirmation: meta as a clean 4-up grid */
+.confirm-meta {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px; margin: 22px 0; text-align: left;
+}
+.confirm-meta dt {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--muted); margin-bottom: 3px;
+}
+.confirm-meta dd { font-size: 0.95rem; }
+
+/* inline form spacing inside cards */
+.card form > label + label { margin-top: 12px; }
+
+/* ============================================================
+   LANDING v2 — hero collage, proof band, testimonials
+   ============================================================ */
+
+/* floating product collage on the hero's right side */
+.hero-art {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 42%;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.hero-chip {
+  pointer-events: auto; position: absolute;
+  width: 168px; background: rgba(255, 255, 255, 0.94);
+  border-radius: 16px; padding: 10px 10px 12px;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.28);
+  text-decoration: none !important; display: flex; flex-direction: column; gap: 6px;
+  transition: transform 0.25s var(--ease-out, ease), box-shadow 0.25s;
+  animation: hero-float 5.5s ease-in-out infinite;
+}
+.hero-chip:hover { transform: translateY(-6px) rotate(0deg) !important; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.34); }
+.hero-chip img { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--paper); border-radius: 10px; }
+.hero-chip-1 { transform: rotate(-6deg); top: 18%; right: 20%; }
+.hero-chip-2 { transform: rotate(4deg); top: 42%; right: 6%; animation-delay: 1.2s; }
+.hero-chip-3 { transform: rotate(-2deg); top: 66%; right: 22%; animation-delay: 2.3s; }
+.hero-chip-name { font-size: 0.78rem; font-weight: 600; color: var(--ink); line-height: 1.25; }
+.hero-chip-price { font-family: var(--font-head); font-weight: 700; color: var(--accent-deep); font-size: 0.95rem; }
+@keyframes hero-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -9px; }
+}
+
+/* numbers band */
+.proof-band {
+  display: flex; flex-wrap: wrap; gap: 10px 34px; align-items: center;
+  justify-content: center; padding: 18px 10px; margin-top: 16px;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+}
+.proof { display: flex; align-items: baseline; gap: 9px; }
+.proof strong { font-family: var(--font-head); font-size: 1.35rem; font-weight: 700; color: var(--ink); }
+.proof span { color: var(--muted); font-size: 0.84rem; }
+
+/* testimonials */
+.testimonials { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.testimonial {
+  margin: 0; background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 20px; display: flex; flex-direction: column; gap: 14px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.testimonial:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.testimonial blockquote {
+  margin: 0; font-size: 0.95rem; color: #3c3f45; line-height: 1.6;
+}
+.testimonial blockquote::before { content: "\201C"; font-family: var(--font-head); font-size: 2rem; color: var(--accent); display: block; line-height: 1; margin-bottom: 4px; }
+.testimonial figcaption { display: flex; align-items: center; gap: 11px; margin-top: auto; }
+.testimonial figcaption strong { display: block; font-size: 0.92rem; }
+.testimonial figcaption .muted { font-size: 0.78rem; }
+.avatar.sm { width: 40px; height: 40px; font-size: 1rem; }
+
+/* CTA perks */
+.cta-perks { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+.cta-perks li { color: rgba(255, 255, 255, 0.82); font-size: 0.92rem; display: flex; gap: 9px; align-items: center; }
+.cta-perks li::before { content: "\2713"; color: #8fe0d0; font-weight: 700; }
+
+@media (max-width: 1000px) { .hero-art { display: none; } }

@@ -17,16 +17,6 @@
 
     <section class="checkout-panel card" data-panel="1">
       <h2>Where should we deliver?</h2>
-      {% if not current_user.is_authenticated %}
-      <div class="guest-contact">
-        <label>Email address (for your order confirmation &amp; tracking)
-          <input type="email" name="guest_email" placeholder="you@example.com" required>
-        </label>
-        <p class="muted">Already have an account?
-          <a href="{{ url_for('auth.login', next=url_for('cart.checkout')) }}">Sign in</a>
-          to use your saved addresses &mdash; or just check out as a guest below.</p>
-      </div>
-      {% endif %}
       {% for addr in addresses %}
       <label class="choice-row">
         <input type="radio" name="address_choice" value="saved-{{ addr.id }}"

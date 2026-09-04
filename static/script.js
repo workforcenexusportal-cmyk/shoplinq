@@ -490,12 +490,6 @@
 
     function validatePanel(n) {
       if (n === 1) {
-        var guest = $("#guest-email-wrap");
-        if (guest && !guest.hidden) {
-          var em = $('input[name="guest_email"]');
-          if (!em || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em.value.trim()))
-            return fail("Please enter a valid email address so we can send your order confirmation.");
-        }
         var choice = ($('input[name="address_choice"]:checked') || {}).value;
         if (choice === "new") {
           var need = ["full_name", "line1", "city", "state", "postal_code", "country"];
@@ -583,3 +577,26 @@
     });
   })();
 })();
+
+  /* ---------- product page: interactive star picker ---------- */
+  (function initStarPicker() {
+    var picker = $("#star-picker");
+    if (!picker) return;
+    var labels = Array.prototype.slice.call(picker.querySelectorAll("label"));
+    var radios = Array.prototype.slice.call(picker.querySelectorAll("input"));
+    function paint(n) {
+      labels.forEach(function (l, i) { l.classList.toggle("on", i < n); });
+    }
+    radios.forEach(function (r) {
+      r.addEventListener("change", function () { paint(Number(r.value)); });
+    });
+    labels.forEach(function (l, i) {
+      l.addEventListener("mouseenter", function () { paint(i + 1); });
+    });
+    picker.addEventListener("mouseleave", function () {
+      var checked = $('input[name="rating"]:checked');
+      paint(Number(checked && checked.value) || 0);
+    });
+    var checked = $('input[name="rating"]:checked');
+    paint(Number(checked && checked.value) || 0);
+  })();
