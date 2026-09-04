@@ -5,7 +5,8 @@
 {% block content %}
 <h1 class="page-title">Checkout</h1>
 
-<form method="post" id="checkout-form" class="checkout-layout" action="{{ url_for('cart.place') }}">
+<form method="post" id="checkout-form" class="checkout-layout" action="{{ url_for('cart.place') }}"
+      data-subtotal="{{ summary.subtotal }}" data-discount="{{ summary.discount or 0 }}" data-tax="{{ summary.tax }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="checkout-main">
     <ol class="checkout-steps" id="checkout-steps">
@@ -54,15 +55,22 @@
     <section class="checkout-panel card" data-panel="2" hidden>
       <h2>Choose a delivery speed</h2>
       <label class="choice-row">
-        <input type="radio" name="delivery" value="standard" checked>
+        <input type="radio" name="delivery" value="standard" checked
+               data-fee="{{ summary.shipping_fee }}"
+               data-desc="Standard delivery (5 business days) — {{ 'FREE' if summary.shipping_fee == 0 else '$%.2f'|format(summary.shipping_fee) }}">
         <span class="choice-copy">
           <strong>Standard delivery</strong>
-          <span>5 business days{% if summary.shipping_fee == 0 and summary.subtotal - summary.discount >= 50 %} — FREE on this order{% endif %}</span>
+          <span>5 business days{% if summary.shipping_fee == 0 %} — <strong>FREE on this order</strong>{% endif %}</span>
         </span>
+        {% if summary.shipping_fee == 0 %}
+        <strong class="choice-price"><s>$4.99</s> FREE</strong>
+        {% else %}
         <strong class="choice-price">$4.99 <em>(FREE over $50)</em></strong>
+        {% endif %}
       </label>
       <label class="choice-row">
-        <input type="radio" name="delivery" value="express">
+        <input type="radio" name="delivery" value="express" data-fee="14.99"
+               data-desc="Express delivery (2 business days) — $14.99">
         <span class="choice-copy"><strong>Express delivery</strong><span>2 business days</span></span>
         <strong class="choice-price">$14.99</strong>
       </label>
@@ -76,7 +84,7 @@
           <span class="muted">{% if stripe_key %}Secure Stripe checkout (test mode){% else %}Test mode — use 4242 4242 4242 4242; declines with 4000 0000 0000 0002{% endif %}</span>
         </span>
       </label>
-      <div class="card-fields" id="card-fields">
+      <div class="card-fields" id="card-fields" data-native="{{ 1 if stripe_key else 0 }}" {% if stripe_key %}hidden{% endif %}>
         <label>Name on card<input type="text" name="card_name" placeholder="ALEX MORGAN" autocomplete="off"></label>
         <label>Card number<input type="text" name="card_number" placeholder="4242 4242 4242 4242" autocomplete="off"></label>
         <div class="form-grid">
@@ -133,9 +141,9 @@
     <dl class="totals">
       <div><dt>Items ({{ summary.count }})</dt><dd>{{ summary.subtotal|money }}</dd></div>
       {% if summary.discount %}<div class="discount"><dt>Promo ({{ summary.promo.code }})</dt><dd>-{{ summary.discount|money }}</dd></div>{% endif %}
-      <div><dt>Shipping</dt><dd>{% if summary.shipping_fee == 0 %}FREE{% else %}{{ summary.shipping_fee|money }}{% endif %}</dd></div>
+      <div><dt>Shipping</dt><dd id="sum-shipping">{% if summary.shipping_fee == 0 %}FREE{% else %}{{ summary.shipping_fee|money }}{% endif %}</dd></div>
       <div><dt>Estimated tax</dt><dd>{{ summary.tax|money }}</dd></div>
-      <div class="grand"><dt>Order total</dt><dd>{{ summary.total|money }}</dd></div>
+      <div class="grand"><dt>Order total</dt><dd id="sum-total">{{ summary.total|money }}</dd></div>
     </dl>
   </aside>
 </form>

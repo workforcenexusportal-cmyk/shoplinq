@@ -431,6 +431,33 @@
       });
     });
 
+    var cardFields = $("#card-fields");
+    var cardNative = cardFields && cardFields.dataset.native === "1";
+    $$('input[name="payment"]').forEach(function (r) {
+      r.addEventListener("change", function () {
+        if (cardFields) cardFields.hidden = r.value !== "card" || cardNative;
+      });
+    });
+
+    function money2(n) { return "$" + Number(n).toFixed(2); }
+    function updateCheckoutTotals() {
+      var del = $('input[name="delivery"]:checked');
+      var fee = del ? Number(del.dataset.fee || 0) : 0;
+      var shipEl = $("#sum-shipping");
+      if (shipEl) shipEl.textContent = fee === 0 ? "FREE" : money2(fee);
+      var totEl = $("#sum-total");
+      if (totEl) {
+        var base = Number(form.dataset.subtotal || 0)
+                 - Number(form.dataset.discount || 0)
+                 + Number(form.dataset.tax || 0);
+        totEl.textContent = money2(base + fee);
+      }
+    }
+    $$('input[name="delivery"]').forEach(function (r) {
+      r.addEventListener("change", updateCheckoutTotals);
+    });
+    updateCheckoutTotals();
+
     function show(n) {
       current = n;
       panels.forEach(function (p) { p.hidden = Number(p.dataset.panel) !== n; });
@@ -467,7 +494,7 @@
       var delEl = $("#review-delivery");
       if (delEl) {
         var del = $('input[name="delivery"]:checked');
-        delEl.textContent = del && del.value === "express" ? "Express delivery (2 business days) — $14.99" : "Standard delivery (5 business days)";
+        delEl.textContent = del && del.dataset.desc ? del.dataset.desc : "Standard delivery (5 business days)";
       }
       var payEl = $("#review-payment");
       if (payEl) {

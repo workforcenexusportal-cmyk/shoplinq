@@ -162,7 +162,7 @@ INFO_PAGES = {
         "subtitle": "Where your order is, and when it gets there.",
         "blocks": [
             {"heading": "Delivery options",
-             "rows": [("Standard delivery", "5 business days &mdash; FREE over $50, otherwise $6.99"),
+             "rows": [("Standard delivery", "5 business days &mdash; FREE over $50, otherwise $4.99"),
                       ("Express delivery", "2 business days &mdash; $14.99"),
                       ("Cash on delivery", "Available on orders up to $500")]},
             {"heading": "Order processing",
