@@ -12,7 +12,19 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from extensions import db, limiter, login_manager, migrate
 
-load_dotenv()
+try:
+    load_dotenv()
+except ValueError as exc:
+    if "null" in str(exc).lower():
+        # Typical cause: PowerShell '>>' redirection encodes UTF-16 (null bytes).
+        raise SystemExit(
+            "Your .env file contains null bytes — this usually happens when it was\n"
+            "created/appended with PowerShell's '>>' redirection (UTF-16 encoding).\n"
+            "Fix: delete the file and let the app regenerate it —\n"
+            "    del .env\n"
+            "    python app.py"
+        )
+    raise
 
 
 def _normalize_db_url(url):
