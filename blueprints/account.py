@@ -55,7 +55,7 @@ def dashboard():
     my_stats = {
         "orders": agg[0] or 0,
         "total_spent": agg[1] or 0,
-        "items": items_bought,
+        "items_count": items_bought,
         "top_category": top_cat[0] if top_cat else None,
         "top_product": top_prod[0] if top_prod else None,
     }
