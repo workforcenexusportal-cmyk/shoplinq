@@ -11,10 +11,12 @@
     {% else %}All products{% endif %}
   </h1>
   <p class="listing-count">{{ pagination.total }} product{{ 's' if pagination.total != 1 }}</p>
+  <button class="filter-toggle" id="filter-toggle" aria-label="Toggle filters">&#9776; Filters</button>
 </div>
 
+<div class="filter-backdrop" id="filter-backdrop"></div>
 <div class="listing-layout">
-  <aside class="filters" aria-label="Product filters">
+  <aside class="filters" id="filters" aria-label="Product filters">
     <form method="get" id="filter-form"
           action="{% if current_category %}{{ url_for('main.products', slug=current_category.slug) }}{% else %}{{ url_for('main.products') }}{% endif %}">
       {% if request.args.get('q') %}

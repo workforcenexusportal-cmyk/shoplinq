@@ -683,6 +683,44 @@
     });
   })();
 
+  /* ---------- hamburger menu ---------- */
+  (function initHamburger() {
+    var toggle = document.getElementById("nav-toggle");
+    var nav = document.getElementById("topbar-nav");
+    var backdrop = document.getElementById("nav-backdrop");
+    if (!toggle || !nav || !backdrop) return;
+    function close() {
+      nav.classList.remove("open");
+      toggle.classList.remove("open");
+      backdrop.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
+    }
+    toggle.addEventListener("click", function () {
+      var open = nav.classList.toggle("open");
+      toggle.classList.toggle("open", open);
+      backdrop.classList.toggle("open", open);
+      toggle.setAttribute("aria-expanded", String(open));
+    });
+    backdrop.addEventListener("click", close);
+  })();
+
+  /* ---------- filter drawer ---------- */
+  (function initFilterDrawer() {
+    var toggle = document.getElementById("filter-toggle");
+    var filters = document.getElementById("filters");
+    var backdrop = document.getElementById("filter-backdrop");
+    if (!toggle || !filters || !backdrop) return;
+    function close() {
+      filters.classList.remove("open");
+      backdrop.classList.remove("open");
+    }
+    toggle.addEventListener("click", function () {
+      var open = filters.classList.toggle("open");
+      backdrop.classList.toggle("open", open);
+    });
+    backdrop.addEventListener("click", close);
+  })();
+
   /* ---------- product page: interactive star picker ---------- */
   (function initStarPicker() {
     var picker = $("#star-picker");

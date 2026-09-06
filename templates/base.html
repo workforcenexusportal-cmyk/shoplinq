@@ -20,6 +20,10 @@
       Shop<span>Linq</span><small>.market</small>
     </a>
 
+    <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
     <form class="search" action="{{ url_for('main.products') }}" method="get" role="search" autocomplete="off">
       <input id="search-input" type="text" name="q" placeholder="Search products, brands and more"
              value="{{ request.args.get('q', '') }}" aria-label="Search ShopLinq">
@@ -29,7 +33,7 @@
       <div class="search-suggest" id="search-suggest" hidden></div>
     </form>
 
-    <nav class="topbar-actions" aria-label="Account and cart">
+    <nav class="topbar-actions" id="topbar-nav" aria-label="Account and cart">
       <div class="dropdown" id="account-dropdown">
         <button type="button" class="topbar-link dropdown-toggle">
           <span class="top-hello">{% if current_user.is_authenticated %}Hello, {{ current_user.first_name }}{% else %}Hello, sign in{% endif %}</span>
@@ -66,6 +70,7 @@
     </nav>
   </div>
 </header>
+<div class="nav-backdrop" id="nav-backdrop"></div>
 
 {% block subnav %}{% endblock %}
 
