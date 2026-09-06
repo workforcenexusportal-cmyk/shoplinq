@@ -53,7 +53,10 @@ redirected to `/pay/<order_number>` (Razorpay Checkout sheet), and `/pay/<order_
 validates the HMAC-SHA256 signature before marking the order paid. Without keys the
 app runs in demo mode and simulates successful/declined payments.
 
-For real card confirmation, point a Stripe webhook at `/webhooks/stripe` (event `checkout.session.completed`) and set `STRIPE_WEBHOOK_SECRET`. Locally you can use the Stripe CLI: `stripe listen --forward-to localhost:5000/webhooks/stripe`.
+Razorpay Checkout handles confirmation itself — no webhook is required for payment status.
+The `/pay/<order_number>/verify` callback checks the HMAC-SHA256 signature with your
+`RAZORPAY_KEY_SECRET` before an order is marked paid, so a tampered or replayed
+response is rejected.
 
 ## Tests
 
