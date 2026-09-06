@@ -8,8 +8,10 @@ from flask_login import current_user, login_required
 from extensions import db
 from models import Address, Order
 from services import (
-    cart_summary, clear_cart, create_order, create_stripe_session,
+    ONLINE_METHODS, cart_summary, clear_cart, create_order,
+    create_razorpay_order, verify_razorpay_signature,
 )
+from models import utcnow
 
 cart_bp = Blueprint("cart", __name__)
 
@@ -40,10 +42,13 @@ def checkout():
         return redirect(url_for("cart.view"))
     addresses = Address.query.filter_by(customer_id=current_user.id).all()
     selected_address = addresses[0] if addresses else None
+    from services import EXPRESS_SHIPPING, FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING
     return render_template(
         "checkout.html", summary=summary, addresses=addresses,
         selected_address=selected_address,
-        stripe_key=current_app.config.get("STRIPE_PUBLISHABLE_KEY") or "",
+        razorpay_key=current_app.config.get("RAZORPAY_KEY_ID") or "",
+        standard_fee=STANDARD_SHIPPING, express_fee=EXPRESS_SHIPPING,
+        free_threshold=FREE_SHIPPING_THRESHOLD,
     )
 
 
@@ -75,11 +80,9 @@ def _resolve_address():
 
 
 def _get_viewable_order(order_number):
-    """Return an order the current visitor is allowed to see, or 404."""
+    """Return one of the signed-in customer's own orders, or 404."""
     order = Order.query.filter_by(order_number=order_number).first_or_404()
     if current_user.is_authenticated and order.customer_id == current_user.id:
-        return order
-    if order.customer_id is None and order_number in session.get("guest_orders", []):
         return order
     abort(404)
 
@@ -94,59 +97,83 @@ def place():
     delivery = request.form.get("delivery", "standard")
     if delivery not in ("standard", "express"):
         delivery = "standard"
-    payment_method = request.form.get("payment", "card")
-    if payment_method not in ("card", "cod"):
-        payment_method = "card"
-    card = {
+    payment_method = request.form.get("payment", "upi")
+    if payment_method not in ONLINE_METHODS + ("cod",):
+        payment_method = "upi"
+    pay = {
+        "vpa": request.form.get("upi_vpa", ""),
         "number": request.form.get("card_number", ""),
-        "exp_month": request.form.get("exp_month", ""),
-        "exp_year": request.form.get("exp_year", ""),
-        "cvc": request.form.get("cvc", ""),
+        "bank": request.form.get("netbanking_bank", ""),
+        "wallet": request.form.get("wallet_choice", ""),
     }
     order, err = create_order(
         current_user, address=address, delivery_method=delivery,
         payment_method=payment_method,
-        promo_code=session.get("promo"), card=card,
+        promo_code=session.get("promo"), pay=pay,
     )
     if err:
         flash(err, "error")
         return redirect(url_for("cart.checkout"))
     clear_cart(current_user)
 
-    # If Stripe is configured and the customer chose card, redirect to Stripe Checkout.
-    if payment_method == "card" and current_app.config.get("STRIPE_SECRET_KEY"):
-        try:
-            stripe_session = create_stripe_session(order)
-            if stripe_session:
-                order.payment.provider_ref = stripe_session.id
-                order.payment.status = "pending"
-                db.session.commit()
-                return redirect(stripe_session.url, code=303)
-        except Exception as exc:  # Stripe outage → fall back to demo mode
-            current_app.logger.warning("Stripe checkout failed (%s); simulating payment.", exc)
+    # Razorpay configured: send online payments through the gateway.
+    if payment_method in ONLINE_METHODS and current_app.config.get("RAZORPAY_KEY_ID"):
+        rp_order_id, rp_err = create_razorpay_order(order)
+        if rp_order_id:
+            order.payment.provider_ref = rp_order_id
+            order.payment.status = "pending"
+            db.session.commit()
+            return redirect(url_for("cart.pay", order_number=order.order_number))
+        # Gateway error → keep the order, let the customer retry payment.
+        order.payment.status = "pending"
+        db.session.commit()
+        flash(f"Order {order.order_number} is placed, but the payment gateway "
+              f"could not be reached ({rp_err}). Please retry from your orders.",
+              "error")
+        return redirect(url_for("cart.confirmation", order_number=order.order_number))
 
     flash(f"Order {order.order_number} placed! A confirmation email is on its way.", "success")
     return redirect(url_for("cart.confirmation", order_number=order.order_number))
 
 
-@cart_bp.route("/checkout/stripe-success/<order_number>")
-def stripe_success(order_number):
+@cart_bp.route("/pay/<order_number>")
+def pay(order_number):
+    """Razorpay Checkout page for a placed order awaiting payment."""
     order = _get_viewable_order(order_number)
-    ref = order.payment.provider_ref if order.payment else None
-    key = current_app.config.get("STRIPE_SECRET_KEY")
-    if ref and key:
-        import stripe
-        stripe.api_key = key
-        try:
-            stripe_session = stripe.checkout.Session.retrieve(ref)
-            if stripe_session.payment_status == "paid":
-                order.payment.status = "paid"
-                from models import utcnow
-                order.payment.paid_date = utcnow()
-                db.session.commit()
-                flash("Payment received — thanks!", "success")
-        except Exception as exc:
-            current_app.logger.warning("Could not verify Stripe session: %s", exc)
+    if not (order and order.payment):
+        abort(404)
+    if order.payment.status == "paid":
+        return redirect(url_for("cart.confirmation", order_number=order.order_number))
+    if not order.payment.provider_ref or not current_app.config.get("RAZORPAY_KEY_ID"):
+        abort(404)
+    return render_template(
+        "pay.html", order=order,
+        razorpay_key=current_app.config["RAZORPAY_KEY_ID"],
+    )
+
+
+@cart_bp.route("/pay/<order_number>/verify", methods=["POST"])
+def pay_verify(order_number):
+    """Verify the Razorpay signature and mark the order paid."""
+    order = _get_viewable_order(order_number)
+    if not (order and order.payment):
+        abort(404)
+    rp_order_id = request.form.get("razorpay_order_id", "")
+    rp_payment_id = request.form.get("razorpay_payment_id", "")
+    signature = request.form.get("razorpay_signature", "")
+    if rp_order_id != (order.payment.provider_ref or ""):
+        flash("Payment could not be verified — unknown payment reference.", "error")
+        return redirect(url_for("cart.confirmation", order_number=order.order_number))
+    if not verify_razorpay_signature(rp_order_id, rp_payment_id, signature):
+        order.payment.status = "failed"
+        db.session.commit()
+        flash("Payment verification failed. If money was deducted it will "
+              "be auto-refunded by your bank within 5-7 business days.", "error")
+        return redirect(url_for("cart.confirmation", order_number=order.order_number))
+    order.payment.status = "paid"
+    order.payment.paid_date = utcnow()
+    db.session.commit()
+    flash("Payment received \u2014 thank you!", "success")
     return redirect(url_for("cart.confirmation", order_number=order.order_number))
 
 
@@ -156,31 +183,3 @@ def confirmation(order_number):
     return render_template("order_confirmation.html", order=order)
 
 
-@cart_bp.route("/webhooks/stripe", methods=["POST"])
-def stripe_webhook():
-    """Receive Stripe events and mark orders paid on completed checkout."""
-    secret = current_app.config.get("STRIPE_WEBHOOK_SECRET")
-    payload = request.get_data()
-    sig = request.headers.get("Stripe-Signature", "")
-    try:
-        import stripe
-        if secret:
-            event = stripe.Webhook.construct_event(payload, sig, secret)
-        else:  # No signing secret configured — parse without verification.
-            event = stripe.Event.construct_from(request.get_json(force=True), None)
-    except Exception as exc:
-        current_app.logger.warning("Invalid Stripe webhook: %s", exc)
-        abort(400)
-
-    if event["type"] == "checkout.session.completed":
-        data = event["data"]["object"]
-        session_id = data.get("id")
-        order = Order.query.filter(
-            Order.payment.has(provider_ref=session_id)).first()
-        if order and order.payment and order.payment.status != "paid":
-            order.payment.status = "paid"
-            from models import utcnow
-            order.payment.paid_date = utcnow()
-            db.session.commit()
-            current_app.logger.info("Stripe webhook marked %s paid.", order.order_number)
-    return "", 200

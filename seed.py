@@ -410,8 +410,8 @@ QA = [
 
 PROMOS = [
     ("SAVE10", 10, 0),
-    ("WELCOME15", 15, 30),
-    ("VIP20", 20, 100),
+    ("WELCOME15", 15, 2400),
+    ("VIP20", 20, 7999),
 ]
 
 # ================================================================ generator banks
@@ -511,11 +511,30 @@ FLOW = ["placed", "packed", "shipped", "out_for_delivery", "delivered"]
 PRODUCTS_PER_SUB = 22
 
 
+INR_FACTOR = 80  # USD catalog ranges -> Indian price points
+
+
+def psych_inr(x):
+    """Round an already-INR amount to a psychological price ending in 9."""
+    if x >= 20:
+        return max(19, round(x / 10) * 10 - 1)
+    return max(9, round(x))
+
+
+def to_inr(usd):
+    """Scale a USD catalog price to a psychological INR price.
+
+    Whole rupees ending in 9 (Rs.1,299) above Rs.100; below that, whole
+    rupees ending in 9 too (Rs.49, Rs.99).
+    """
+    x = usd * INR_FACTOR
+    if x >= 20:
+        return max(19, round(x / 10) * 10 - 1)
+    return max(9, round(x))
+
+
 def gen_price(lo, hi):
-    price = round(random.uniform(lo, hi), 2)
-    if price >= 20:
-        price = int(price) + 0.99
-    return round(max(price, lo), 2)
+    return to_inr(random.uniform(lo, hi))
 
 
 def gen_rating():
@@ -582,6 +601,7 @@ def seed():
     # ---------------------------------------------------------- hero products
     products = {}
     for (name, brand, price, deal, stock, sub_slug, imgs, desc, featured) in HEROES:
+        price, deal = to_inr(price), (to_inr(deal) if deal else None)
         p = Product(
             name=name, slug=unique_slug_local(name), brand=brand, price=price,
             deal_price=deal, stock=stock, category_id=sub_cats[sub_slug].id,
@@ -612,7 +632,7 @@ def seed():
                 name = f"{brand} {series} {model} {ptype}"
                 price = gen_price(lo, hi)
                 is_deal = random.random() < 0.06
-                deal_price = round(price * random.uniform(0.55, 0.90), 2) if is_deal else None
+                deal_price = psych_inr(price * random.uniform(0.55, 0.90)) if is_deal else None
                 feat = random.sample(FEATURES[theme], 2)
                 description = (f"{ptype} by {brand}. Built with {feat[0]} and {feat[1]} — "
                                f"plus fast shipping, 30-day returns and a 2-year ShopLinq guarantee.")
@@ -649,8 +669,8 @@ def seed():
 
     addr = Address(
         customer_id=demo.id, label="Home", full_name="Demo Demo",
-        line1="42 Harbor Lane", city="Springfield", state="IL",
-        postal_code="62701", country="United States", phone="+1 555 010 2030",
+        line1="42 Marine Drive", city="Mumbai", state="Maharashtra",
+        postal_code="400020", country="India", phone="+91 98200 12345",
         is_default=True)
     db.session.add(addr)
     db.session.add(PaymentMethod(
@@ -723,7 +743,7 @@ def seed():
     print(f"· {len(QA)} Q&A entries, {len(PROMOS)} promo codes")
 
     # ---------------------------------------------------------- orders
-    def make_order(customer, items, status, days_ago, address, method="card",
+    def make_order(customer, items, status, days_ago, address, method="upi",
                    promo=None, discount=0.0):
         order = Order(
             customer_id=customer.id,
@@ -743,9 +763,9 @@ def seed():
         subtotal = order.subtotal
         order.discount = round(discount, 2)
         taxable = max(subtotal - order.discount, 0)
-        order.tax = round(taxable * 0.08, 2)
-        order.shipping_fee = 0 if taxable >= 50 else 4.99
-        order.total = round(taxable + order.tax + order.shipping_fee, 2)
+        order.tax = 0  # GST is included in listed prices
+        order.shipping_fee = 0 if taxable >= 999 else 79
+        order.total = round(taxable + order.shipping_fee, 2)
         db.session.add(order)
         db.session.flush()
         for p, q in items:
@@ -762,12 +782,21 @@ def seed():
         for i, step in enumerate(FLOW[:upto]):
             shipping.record(step, when=order.placed_date + timedelta(days=i))
         db.session.add(shipping)
-        paid = (method == "card") or (status == "delivered")
+        paid = (method in ("upi", "card", "netbanking", "wallet")) or (status == "delivered")
+        if method == "card":
+            brand, last4 = "Visa", "4242"
+        elif method == "upi":
+            brand, last4 = "UPI", None
+        elif method == "netbanking":
+            brand, last4 = "HDFC Bank", None
+        elif method == "wallet":
+            brand, last4 = "Paytm Wallet", None
+        else:
+            brand, last4 = None, None
         db.session.add(Payment(
             order_id=order.id, method=method,
             status="paid" if paid else "pending",
-            amount=order.total, card_brand="Visa" if method == "card" else None,
-            last4="4242" if method == "card" else None,
+            amount=order.total, card_brand=brand, last4=last4,
             paid_date=order.placed_date if paid else None))
         return order
 
@@ -795,17 +824,21 @@ def seed():
     for i in range(30):
         buyer = random.choice(synth_reviewers)
         buyer_addr = {
-            "full_name": buyer.name, "line1": f"{random.randint(1, 99)} Maple Street",
-            "city": random.choice(["Portland", "Austin", "Denver", "Boston", "Seattle"]),
-            "state": "US", "postal_code": f"{random.randint(10000, 99999)}",
-            "country": "United States", "phone": "+1 555 555 5555",
+            "full_name": buyer.name, "line1": f"{random.randint(1, 99)} MG Road",
+            "city": random.choice(["Mumbai", "Delhi", "Bengaluru", "Chennai",
+                                   "Hyderabad", "Pune", "Kolkata", "Jaipur"]),
+            "state": random.choice(["Maharashtra", "Karnataka", "Delhi",
+                                    "Tamil Nadu", "Telangana", "West Bengal",
+                                    "Rajasthan"]),
+            "postal_code": f"{random.randint(110001, 700099)}",
+            "country": "India", "phone": f"+91 9{random.randint(100000000, 999999999)}",
         }
         items = [(p, random.randint(1, 3))
                  for p in random.sample(sample_products, random.randint(1, 3))]
         days_ago = random.randint(3, 170)
         status = (statuses_by_age[0] if days_ago > 30
                   else random.choice(statuses_by_age))
-        method = random.choice(["card", "card", "cod"])
+        method = random.choice(["upi", "upi", "card", "netbanking", "wallet", "cod"])
         make_order(buyer, items, status, days_ago, buyer_addr, method=method)
         n_orders += 1
     db.session.flush()

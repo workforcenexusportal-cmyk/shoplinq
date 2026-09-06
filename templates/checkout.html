@@ -57,46 +57,95 @@
       <label class="choice-row">
         <input type="radio" name="delivery" value="standard" checked
                data-fee="{{ summary.shipping_fee }}"
-               data-desc="Standard delivery (5 business days) — {{ 'FREE' if summary.shipping_fee == 0 else '$%.2f'|format(summary.shipping_fee) }}">
+               data-desc="Standard delivery (5 business days) — {{ 'FREE' if summary.shipping_fee == 0 else standard_fee|money }}">
         <span class="choice-copy">
           <strong>Standard delivery</strong>
           <span>5 business days{% if summary.shipping_fee == 0 %} — <strong>FREE on this order</strong>{% endif %}</span>
         </span>
         {% if summary.shipping_fee == 0 %}
-        <strong class="choice-price"><s>$4.99</s> FREE</strong>
+        <strong class="choice-price"><s>{{ standard_fee|money }}</s> FREE</strong>
         {% else %}
-        <strong class="choice-price">$4.99 <em>(FREE over $50)</em></strong>
+        <strong class="choice-price">{{ standard_fee|money }} <em>(FREE over {{ free_threshold|money }})</em></strong>
         {% endif %}
       </label>
       <label class="choice-row">
-        <input type="radio" name="delivery" value="express" data-fee="14.99"
-               data-desc="Express delivery (2 business days) — $14.99">
+        <input type="radio" name="delivery" value="express" data-fee="{{ express_fee }}"
+               data-desc="Express delivery (2 business days) — {{ express_fee|money }}">
         <span class="choice-copy"><strong>Express delivery</strong><span>2 business days</span></span>
-        <strong class="choice-price">$14.99</strong>
+        <strong class="choice-price">{{ express_fee|money }}</strong>
       </label>
     </section>
 
     <section class="checkout-panel card" data-panel="3" hidden>
       <h2>How would you like to pay?</h2>
+      {% set demo = not razorpay_key %}
       <label class="choice-row">
-        <input type="radio" name="payment" value="card" checked>
-        <span class="choice-copy"><strong>Credit or debit card</strong>
-          <span class="muted">{% if stripe_key %}Secure Stripe checkout (test mode){% else %}Test mode — use 4242 4242 4242 4242; declines with 4000 0000 0000 0002{% endif %}</span>
+        <input type="radio" name="payment" value="upi" checked>
+        <span class="choice-copy"><strong>UPI</strong>
+          <span class="muted">GPay, PhonePe, Paytm, BHIM &mdash; pay by UPI ID or QR</span>
+        </span>
+        <span class="choice-price">Recommended</span>
+      </label>
+      <div class="card-fields upi-fields" id="upi-fields" data-native="{{ 0 if demo else 1 }}" {% if not demo %}hidden{% endif %}>
+        <label>Your UPI ID<input type="text" name="upi_vpa" placeholder="name@okhdfcbank" autocomplete="off"></label>
+        <p class="muted tiny">Demo mode &mdash; any valid-looking UPI ID succeeds; <code>fail@upi</code> simulates a decline.</p>
+      </div>
+      <label class="choice-row">
+        <input type="radio" name="payment" value="card">
+        <span class="choice-copy"><strong>Card</strong>
+          <span class="muted">RuPay, Visa, Mastercard, Amex credit &amp; debit cards</span>
         </span>
       </label>
-      <div class="card-fields" id="card-fields" data-native="{{ 1 if stripe_key else 0 }}" {% if stripe_key %}hidden{% endif %}>
-        <label>Name on card<input type="text" name="card_name" placeholder="ALEX MORGAN" autocomplete="off"></label>
-        <label>Card number<input type="text" name="card_number" placeholder="4242 4242 4242 4242" autocomplete="off"></label>
+      <div class="card-fields" id="card-fields" data-native="{{ 0 if demo else 1 }}" {% if not demo %}hidden{% endif %}>
+        <label>Name on card<input type="text" name="card_name" placeholder="PRIYA SHARMA" autocomplete="off"></label>
+        <label>Card number<input type="text" name="card_number" placeholder="4111 1111 1111 1111" autocomplete="off"></label>
         <div class="form-grid">
           <label>Exp. month<input type="number" name="exp_month" min="1" max="12" placeholder="12"></label>
           <label>Exp. year<input type="number" name="exp_year" min="2026" max="2040" placeholder="2030"></label>
-          <label>CVC<input type="text" name="cvc" placeholder="123" autocomplete="off"></label>
+          <label>CVV<input type="text" name="cvc" placeholder="123" autocomplete="off"></label>
         </div>
+        <p class="muted tiny">Demo mode &mdash; <code>4111 1111 1111 1111</code> succeeds; <code>4000 0000 0000 0002</code> declines.</p>
+      </div>
+      <label class="choice-row">
+        <input type="radio" name="payment" value="netbanking">
+        <span class="choice-copy"><strong>Netbanking</strong>
+          <span class="muted">All major Indian banks</span>
+        </span>
+      </label>
+      <div class="card-fields" id="netbanking-fields" data-native="{{ 0 if demo else 1 }}" {% if not demo %}hidden{% endif %}>
+        <label>Choose your bank
+          <select name="netbanking_bank">
+            <option value="">Select bank&hellip;</option>
+            <option>HDFC Bank</option><option>State Bank of India</option>
+            <option>ICICI Bank</option><option>Axis Bank</option>
+            <option>Kotak Mahindra Bank</option><option>Punjab National Bank</option>
+            <option>Bank of Baroda</option><option>IDFC First Bank</option>
+            <option>Yes Bank</option><option>IndusInd Bank</option>
+          </select>
+        </label>
+      </div>
+      <label class="choice-row">
+        <input type="radio" name="payment" value="wallet">
+        <span class="choice-copy"><strong>Wallets</strong>
+          <span class="muted">Paytm, PhonePe, Amazon Pay &amp; more</span>
+        </span>
+      </label>
+      <div class="card-fields" id="wallet-fields" data-native="{{ 0 if demo else 1 }}" {% if not demo %}hidden{% endif %}>
+        <label>Choose a wallet
+          <select name="wallet_choice">
+            <option value="">Select wallet&hellip;</option>
+            <option>Paytm Wallet</option><option>PhonePe Wallet</option>
+            <option>Amazon Pay</option><option>Mobikwik</option><option>Freecharge</option>
+          </select>
+        </label>
       </div>
       <label class="choice-row">
         <input type="radio" name="payment" value="cod">
         <span class="choice-copy"><strong>Cash on delivery</strong><span class="muted">Pay in cash when your order arrives</span></span>
       </label>
+      {% if not demo %}
+      <p class="muted tiny">Online payments are collected securely by Razorpay.</p>
+      {% endif %}
     </section>
 
     <section class="checkout-panel card" data-panel="4" hidden>
@@ -142,7 +191,7 @@
       <div><dt>Items ({{ summary.count }})</dt><dd>{{ summary.subtotal|money }}</dd></div>
       {% if summary.discount %}<div class="discount"><dt>Promo ({{ summary.promo.code }})</dt><dd>-{{ summary.discount|money }}</dd></div>{% endif %}
       <div><dt>Shipping</dt><dd id="sum-shipping">{% if summary.shipping_fee == 0 %}FREE{% else %}{{ summary.shipping_fee|money }}{% endif %}</dd></div>
-      <div><dt>Estimated tax</dt><dd>{{ summary.tax|money }}</dd></div>
+      <div><dt>GST</dt><dd class="muted">included in prices</dd></div>
       <div class="grand"><dt>Order total</dt><dd id="sum-total">{{ summary.total|money }}</dd></div>
     </dl>
   </aside>

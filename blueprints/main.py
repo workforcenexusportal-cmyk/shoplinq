@@ -162,18 +162,18 @@ INFO_PAGES = {
         "subtitle": "Where your order is, and when it gets there.",
         "blocks": [
             {"heading": "Delivery options",
-             "rows": [("Standard delivery", "5 business days &mdash; FREE over $50, otherwise $4.99"),
-                      ("Express delivery", "2 business days &mdash; $14.99"),
-                      ("Cash on delivery", "Available on orders up to $500")]},
+             "rows": [("Standard delivery", "5 business days &mdash; FREE over &#8377;999, otherwise &#8377;79"),
+                      ("Express delivery", "2 business days &mdash; &#8377;199"),
+                      ("Cash on delivery", "Available on orders up to &#8377;50,000")]},
             {"heading": "Order processing",
-             "text": "Orders placed before 14:00 ET are picked and packed the same day. "
+             "text": "Orders placed before 14:00 IST are picked and packed the same day. "
                      "You receive a confirmation email immediately and a tracking "
                      "number as soon as the parcel leaves our fulfillment center."},
             {"heading": "Things to know",
              "list": [
-                 "We currently ship to all 50 US states and 37 other countries.",
+                 "We currently ship to all 28 states and 8 union territories across India.",
                  "Large items (furniture, gym equipment) may add 2&ndash;4 days.",
-                 "PO boxes: standard delivery only, no express.",
+                 "COD is available on orders up to &#8377;50,000.",
                  "Delivery timelines exclude public holidays.",
              ]},
         ],
@@ -207,11 +207,13 @@ INFO_PAGES = {
         "subtitle": "The questions our support team hears most.",
         "blocks": [
             {"heading": "Do I need an account to order?",
-             "text": "No &mdash; guest checkout works with just an email address. An account "
-                     "gives you order history, saved addresses, wishlist, and faster checkout."},
+             "text": "Yes &mdash; an account keeps your order history, saved addresses, "
+                     "wishlist and payment status in one place, and makes checkout faster."},
             {"heading": "Which payment methods do you accept?",
-             "text": "Visa, Mastercard, American Express, PayPal, and cash on delivery "
-                     "(orders up to $500). Card details are never stored on our servers."},
+             "text": "UPI (GPay, PhonePe, Paytm, BHIM), cards (RuPay, Visa, Mastercard, Amex), "
+                     "netbanking from all major Indian banks, wallets, and cash on delivery. "
+                     "Online payments are collected by Razorpay and card details never "
+                     "touch our servers."},
             {"heading": "Can I change or cancel my order?",
              "text": "You can cancel from Your Orders until the status changes to "
                      "Packed. After that, refuse the parcel or use the free returns process."},

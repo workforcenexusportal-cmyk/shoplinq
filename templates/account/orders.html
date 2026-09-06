@@ -27,6 +27,16 @@
       <div><span class="muted">Order #</span><br>{{ order.order_number }}</div>
       <span class="badge status-{{ order.status }}">{{ order.status_label }}</span>
     </header>
+    {% if order.payment and order.payment.status == 'pending' and order.payment.method in ['upi', 'card', 'netbanking', 'wallet'] %}
+    <div class="flash warn" style="margin:0 0 10px;">
+      Payment pending &mdash;
+      {% if order.payment.provider_ref %}
+      <a href="{{ url_for('cart.pay', order_number=order.order_number) }}">pay now</a> to confirm this order.
+      {% else %}
+      contact support to complete payment.
+      {% endif %}
+    </div>
+    {% endif %}
     <div class="order-card-body">
       {% for item in order.items[:3] %}
       <div class="order-item-line">

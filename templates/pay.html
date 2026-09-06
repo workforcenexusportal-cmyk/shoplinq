@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Pay for your order · ShopLinq{% endblock %}
+{% block page_id %}checkout{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <h1>Complete your payment</h1>
+  <p class="muted">Order {{ order.order_number }} &middot; {{ order.total|money }}</p>
+</section>
+
+<section class="card pay-card" style="max-width:560px;margin:0 auto;">
+  <h2>Pay securely with Razorpay</h2>
+  <p class="muted">UPI &middot; Cards (RuPay, Visa, Mastercard) &middot; Netbanking &middot; Wallets</p>
+  <p class="muted tiny">This page opens the Razorpay checkout sheet. If you close it
+    without paying, your order stays placed and you can pay anytime from
+    <a href="{{ url_for('account.orders') }}">Your Orders</a>.</p>
+  <div id="razorpay-msg" class="flash error" hidden></div>
+  <button type="button" id="rzp-btn" class="btn btn-primary btn-block">
+    Pay {{ order.total|money }} now
+  </button>
+  <a class="btn btn-outline btn-block" href="{{ url_for('cart.confirmation', order_number=order.order_number) }}">
+    Pay later — view order
+  </a>
+</section>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  var btn = document.getElementById("rzp-btn");
+  var msg = document.getElementById("razorpay-msg");
+  btn.addEventListener("click", function () {
+    var rzp = new Razorpay({
+      key: "{{ razorpay_key }}",
+      amount: {{ (order.total * 100)|round|int }},
+      currency: "INR",
+      name: "ShopLinq",
+      description: "Order {{ order.order_number }}",
+      order_id: "{{ order.payment.provider_ref }}",
+      prefill: {
+        name: "{{ order.ship_name or '' }}",
+        contact: "{{ order.ship_phone or '' }}",
+        email: "{{ order.contact_email or '' }}"
+      },
+      theme: { color: "#0e9f8a" },
+      handler: function (resp) {
+        var form = document.createElement("form");
+        form.method = "POST";
+        form.action = "{{ url_for('cart.pay_verify', order_number=order.order_number) }}";
+        [["razorpay_order_id", resp.razorpay_order_id],
+         ["razorpay_payment_id", resp.razorpay_payment_id],
+         ["razorpay_signature", resp.razorpay_signature],
+         ["csrf_token", "{{ csrf_token() }}"]].forEach(function (pair) {
+          var input = document.createElement("input");
+          input.type = "hidden";
+          input.name = pair[0];
+          input.value = pair[1] || "";
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      },
+      modal: {
+        ondismiss: function () {
+          msg.hidden = false;
+          msg.textContent = "Payment window closed — your order is saved, you can pay later.";
+        }
+      }
+    });
+    rzp.on("payment.failed", function () {
+      msg.hidden = false;
+      msg.textContent = "Payment failed. You can retry from Your Orders.";
+    });
+    rzp.open();
+  });
+</script>
+{% endblock %}

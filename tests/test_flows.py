@@ -144,3 +144,107 @@ def test_admin_returns_page(client):
     login(client, "admin@test.com", "adminpass")
     resp = client.get("/admin/returns")
     assert resp.status_code == 200
+
+
+# ------------------------------------------------------------ India payments (UPI demo mode)
+
+def test_upi_order_success(client):
+    login(client, "jane@test.com", "janepass")
+    token = csrf(client)
+    client.post("/api/cart/add", json={"product_id": 1, "quantity": 1},
+                headers={"X-CSRF-Token": token})
+    place = client.post("/checkout/place", data={
+        "csrf_token": token,
+        "address_choice": "new",
+        "full_name": "Jane Shopper",
+        "line1": "1 MG Road",
+        "city": "Bengaluru",
+        "postal_code": "560001",
+        "country": "India",
+        "delivery": "standard",
+        "payment": "upi",
+        "upi_vpa": "jane@okicicibank",
+    }, follow_redirects=True)
+    assert place.status_code == 200
+    assert b"order" in place.data.lower()
+
+
+def test_upi_declined(client):
+    login(client, "jane@test.com", "janepass")
+    token = csrf(client)
+    client.post("/api/cart/add", json={"product_id": 1, "quantity": 1},
+                headers={"X-CSRF-Token": token})
+    place = client.post("/checkout/place", data={
+        "csrf_token": token,
+        "address_choice": "new",
+        "full_name": "Jane Shopper",
+        "line1": "1 MG Road",
+        "city": "Bengaluru",
+        "postal_code": "560001",
+        "country": "India",
+        "delivery": "standard",
+        "payment": "upi",
+        "upi_vpa": "fail@upi",
+    }, follow_redirects=True)
+    assert place.status_code == 200
+    assert b"declined" in place.data.lower()
+
+
+def test_upi_invalid_id_rejected(client):
+    login(client, "jane@test.com", "janepass")
+    token = csrf(client)
+    client.post("/api/cart/add", json={"product_id": 1, "quantity": 1},
+                headers={"X-CSRF-Token": token})
+    place = client.post("/checkout/place", data={
+        "csrf_token": token,
+        "address_choice": "new",
+        "full_name": "Jane Shopper",
+        "line1": "1 MG Road",
+        "city": "Bengaluru",
+        "postal_code": "560001",
+        "country": "India",
+        "delivery": "standard",
+        "payment": "upi",
+        "upi_vpa": "not-a-vpa",
+    }, follow_redirects=True)
+    assert place.status_code == 200
+    assert b"valid UPI ID" in place.data
+
+
+def test_pay_page_requires_razorpay_config(client):
+    login(client, "jane@test.com", "janepass")
+    resp = client.get("/pay/SL20260906-XXXX")
+    assert resp.status_code == 404
+
+
+def test_razorpay_signature_verification():
+    import hashlib, hmac as hmac_mod
+    from services import verify_razorpay_signature
+    key_secret = "testsecret"
+    class _Ctx:
+        class config:
+            RAZORPAY_KEY_SECRET = key_secret
+    from flask import current_app
+    # verify outside app context by monkey-ish direct hmac check
+    import services
+    good_sig = hmac_mod.new(key_secret.encode(),
+                            b"order_X|pay_Y", hashlib.sha256).hexdigest()
+    # emulate app context config
+    class Cfg(dict):
+        def __getattr__(self, k):
+            return self[k]
+    with __import__("flask").Flask(__name__).test_request_context():
+        import flask
+        app = flask.Flask(__name__)
+        app.config["RAZORPAY_KEY_SECRET"] = key_secret
+        with app.test_request_context():
+            assert verify_razorpay_signature("order_X", "pay_Y", good_sig)
+            assert not verify_razorpay_signature("order_X", "pay_Y", "deadbeef")
+
+
+def test_inr_formatting():
+    from services import inr
+    assert inr(1299.0) == "\u20b91,299"
+    assert inr(1298.90) == "\u20b91,298.90"
+    assert inr(123456.0) == "\u20b91,23,456"
+    assert inr(None) == "\u2014"

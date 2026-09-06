@@ -8,7 +8,7 @@ import pytest
 os.environ["FLASK_DEBUG"] = "1"
 os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["DEMO_MODE"] = "1"
-os.environ.pop("STRIPE_SECRET_KEY", None)
+os.environ.pop("RAZORPAY_KEY_ID", None)
 os.environ.pop("MAIL_SERVER", None)
 
 _db_fd, _db_path = tempfile.mkstemp(suffix=".db")

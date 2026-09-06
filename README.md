@@ -11,7 +11,7 @@ A full-featured, Amazon-style online marketplace built with **Python Flask** —
 - **Product pages** — image gallery, ratings & reviews, Q&A, related products, wishlist, out-of-stock "Notify me"
 - **Cart** — AJAX quantity editing, save-for-later, promo codes (`SAVE10`, `WELCOME15`, `VIP20`) — no page reloads
 - **Checkout** — 4-step wizard: address → delivery speed → payment → review
-- **Payments** — Stripe Checkout in test mode (falls back to a built-in demo card simulator when no keys are set — use `4242 4242 4242 4242`, declines `4000 0000 0000 0002`) or cash on delivery
+- **Payments** — Razorpay for India (UPI, RuPay/Visa/Mastercard cards, netbanking, wallets) with a built-in demo simulator when no keys are set (any valid UPI ID succeeds; `fail@upi` declines; card `4111 1111 1111 1111` succeeds, `4000 0000 0000 0002` declines), plus cash on delivery. Prices in ₹ (INR), GST included in listed prices
 - **Customer portal** — dashboard with activity stats, order history & tracking timeline (Placed → Packed → Shipped → Out for Delivery → Delivered), addresses, payment methods, wishlist, profile
 - **Admin** (reachable from the same account menu) — product CRUD, category tree management, inventory control, order fulfillment with automatic customer notifications, and a **sales analytics page** (monthly revenue chart, units sold, top products, review analysis)
 
@@ -45,9 +45,13 @@ secure cookies automatically.
 
 The demo customer already has order history at different tracking stages, a wishlist, a saved address and card.
 
-### Stripe (optional)
+### Razorpay (optional)
 
-Copy `.env.example` to `.env` and add your **test** keys (`sk_test_...` / `pk_test_...`). Without keys, card payments run in demo mode.
+Set `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` in `.env` to collect real payments.
+When keys are set, online orders are placed with payment pending, the customer is
+redirected to `/pay/<order_number>` (Razorpay Checkout sheet), and `/pay/<order_number>/verify`
+validates the HMAC-SHA256 signature before marking the order paid. Without keys the
+app runs in demo mode and simulates successful/declined payments.
 
 For real card confirmation, point a Stripe webhook at `/webhooks/stripe` (event `checkout.session.completed`) and set `STRIPE_WEBHOOK_SECRET`. Locally you can use the Stripe CLI: `stripe listen --forward-to localhost:5000/webhooks/stripe`.
 
@@ -67,7 +71,7 @@ services.py          # cart/order/promo/email business logic
 blueprints/
   main.py            # homepage, listings, product detail
   auth.py            # register / login / password reset
-  cart.py            # cart, checkout, order placement, Stripe
+  cart.py            # cart, checkout, order placement, Razorpay + COD
   account.py         # customer portal
   admin.py           # admin dashboard + analytics
   api.py             # JSON endpoints powering script.js

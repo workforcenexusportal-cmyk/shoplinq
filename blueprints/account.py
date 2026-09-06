@@ -143,9 +143,9 @@ def addresses():
             if is_default:
                 Address.query.filter_by(customer_id=current_user.id).update({"is_default": False})
                 addr.is_default = True
-            elif not Address.query.filter_by(
+            elif not Address.query.filter(
                     Address.customer_id == current_user.id,
-                    Address.is_default == True).first():  # noqa: E712
+                    Address.is_default.is_(True)).first():
                 addr.is_default = True
             db.session.commit()
             flash("Address saved.", "success")

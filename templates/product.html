@@ -59,7 +59,7 @@
 
   <aside class="buy-box" data-product-id="{{ product.id }}">
     <strong class="price price-lg">{{ product.effective_price|money }}</strong>
-    <p class="buy-shipping">FREE delivery on orders over $50</p>
+    <p class="buy-shipping">FREE delivery on orders over ₹999</p>
     {% if product.in_stock %}
       {% if product.stock <= 5 %}
       <p class="stock low">Only {{ product.stock }} left in stock — order soon.</p>

@@ -431,11 +431,16 @@
       });
     });
 
-    var cardFields = $("#card-fields");
-    var cardNative = cardFields && cardFields.dataset.native === "1";
+    var methodBlocks = {
+      upi: $("#upi-fields"), card: $("#card-fields"),
+      netbanking: $("#netbanking-fields"), wallet: $("#wallet-fields"),
+    };
     $$('input[name="payment"]').forEach(function (r) {
       r.addEventListener("change", function () {
-        if (cardFields) cardFields.hidden = r.value !== "card" || cardNative;
+        Object.keys(methodBlocks).forEach(function (m) {
+          var block = methodBlocks[m];
+          if (block) block.hidden = m !== r.value || block.dataset.native === "1";
+        });
       });
     });
 
@@ -498,9 +503,19 @@
       }
       var payEl = $("#review-payment");
       if (payEl) {
-        var pay = $('input[name="payment"]:checked');
-        payEl.textContent = pay && pay.value === "cod" ? "Cash on delivery" : "Card (test mode)";
+        var pay = ($('input[name="payment"]:checked') || {}).value;
+        var sel;
+        if (pay === "cod") payEl.textContent = "Cash on delivery";
+        else if (pay === "upi") payEl.textContent = "UPI" + (((sel = $('input[name="upi_vpa"]')) && sel.value.trim()) ? " (" + sel.value.trim() + ")" : "");
+        else if (pay === "netbanking") payEl.textContent = "Netbanking" + (((sel = $('select[name="netbanking_bank"]')) && sel.value) ? " — " + sel.value : "");
+        else if (pay === "wallet") payEl.textContent = "Wallet" + (((sel = $('select[name="wallet_choice"]')) && sel.value) ? " — " + sel.value : "");
+        else payEl.textContent = "Card";
       }
+    }
+
+    function methodHidden(m) {
+      var block = methodBlocks[m];
+      return !block || block.hidden || block.dataset.native === "1";
     }
 
     var errEl = $("#checkout-error");
@@ -528,12 +543,27 @@
       }
       if (n === 3) {
         var pay = ($('input[name="payment"]:checked') || {}).value;
-        if (pay === "card") {
+        var upiBlock = $("#upi-fields");
+        if (pay === "upi" && (!upiBlock || upiBlock.dataset.native !== "1")) {
+          var vpa = $('input[name="upi_vpa"]');
+          var v = vpa && vpa.value.trim() || "";
+          if (!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(v))
+            return fail("Please enter a valid UPI ID, e.g. name@okhdfcbank.");
+        }
+        if (pay === "card" && !methodHidden("card")) {
           var need = ["card_name", "card_number", "exp_month", "exp_year", "cvc"];
           for (var j = 0; j < need.length; j++) {
             if (!filled(need[j]))
-              return fail("Please fill in all card details, or choose cash on delivery.");
+              return fail("Please fill in all card details, or choose another payment method.");
           }
+        }
+        if (pay === "netbanking" && !methodHidden("netbanking")) {
+          var bank = $('select[name="netbanking_bank"]');
+          if (!bank || !bank.value) return fail("Please choose your bank for netbanking.");
+        }
+        if (pay === "wallet" && !methodHidden("wallet")) {
+          var w = $('select[name="wallet_choice"]');
+          if (!w || !w.value) return fail("Please choose a wallet.");
         }
       }
       clearError();

@@ -14,10 +14,45 @@ from models import (
     PromoCode, Shipping, StockNotification, utcnow,
 )
 
-TAX_RATE = 0.08
-STANDARD_SHIPPING = 4.99
-EXPRESS_SHIPPING = 14.99
-FREE_SHIPPING_THRESHOLD = 50.00
+# ------------------------------------------------------------ India pricing
+# Prices are MRP-style: GST is included in the listed price (Indian
+# convention), so no tax is added on top at checkout.
+TAX_RATE = 0.0
+STANDARD_SHIPPING = 79.00      # Rs.79
+EXPRESS_SHIPPING = 199.00      # Rs.199
+FREE_SHIPPING_THRESHOLD = 999.00  # free standard shipping over Rs.999
+ONLINE_METHODS = ("upi", "card", "netbanking", "wallet")
+DECLINE_HINTS = {
+    "upi": "fail@upi",
+    "card": "4000000000000002",
+}
+
+def inr(value):
+    """Format a number as Indian Rupees with Indian digit grouping.
+
+    Whole rupees render without decimals (Rs.1,299); fractional amounts
+    keep two decimals (Rs.1,298.90). Grouping is Indian style:
+    1,23,456 / 12,34,56,789.
+    """
+    if value is None:
+        return "\u2014"
+    value = round(float(value), 2)
+    whole, frac = divmod(abs(value), 1)
+    digits = str(int(whole))
+    if len(digits) > 3:
+        head, tail = digits[:-3], digits[-3:]
+        groups = []
+        while len(head) > 2:
+            groups.insert(0, head[-2:])
+            head = head[:-2]
+        if head:
+            groups.insert(0, head)
+        digits = ",".join(groups + [tail])
+    out = f"\u20b9{digits}"
+    if round(frac, 2) > 0:
+        out += f".{int(round(frac * 100)):02d}"
+    return ("-" if value < 0 else "") + out
+
 
 # ------------------------------------------------------------ ttl cache
 # Tiny in-process TTL cache so hot catalog queries (nav tree, brands,
@@ -290,31 +325,47 @@ def _shipping_estimate(delivery_method):
 
 
 def create_order(user, *, address, delivery_method, payment_method,
-                 promo_code=None, card=None, guest_email=None):
+                 promo_code=None, pay=None):
     """Create Order + items + shipping + payment from the user's cart.
-    Returns (order, error). Card payment is simulated unless Stripe is configured.
-    ``user`` may be an anonymous user for guest checkout, in which case
-    ``guest_email`` is required."""
+    Returns (order, error).
+
+    Payment methods (India): upi | card | netbanking | wallet | cod.
+    Without Razorpay keys the online methods are simulated (demo mode);
+    with keys the payment stays pending until the Razorpay callback
+    verifies the signature.
+    """
     summary = cart_summary(user, delivery_method, promo_code)
     if not summary["lines"]:
         return None, "Your cart is empty."
+    if not bool(getattr(user, "is_authenticated", False)):
+        return None, "Please sign in to place your order."
+    if payment_method not in ONLINE_METHODS + ("cod",):
+        return None, "Please choose a valid payment method."
 
-    is_authenticated = bool(getattr(user, "is_authenticated", False))
-    if not is_authenticated and not guest_email:
-        return None, "Please provide an email address for your order."
-
-    card = card or {}
+    pay = pay or {}
     if payment_method == "card":
-        number = (card.get("number") or "").replace(" ", "")
+        number = (pay.get("number") or "").replace(" ", "")
         if len(number) != 16 or not number.isdigit():
             return None, "Please enter a valid 16-digit card number."
-        if number.startswith("4000000000000002"):
-            return None, "Your card was declined. Try the test card 4242 4242 4242 4242."
+        if number == DECLINE_HINTS["card"]:
+            return None, "Your card was declined. Try the demo card 4111 1111 1111 1111."
+    elif payment_method == "upi":
+        vpa = (pay.get("vpa") or "").strip()
+        if "@" not in vpa or len(vpa.split("@")[0]) < 2 or len(vpa.split("@")[1]) < 3:
+            return None, "Please enter a valid UPI ID, e.g. name@okhdfcbank."
+        if vpa.lower() == DECLINE_HINTS["upi"]:
+            return None, "UPI payment was declined by your bank. Please try again."
+    elif payment_method == "netbanking":
+        if not (pay.get("bank") or "").strip():
+            return None, "Please choose your bank."
+    elif payment_method == "wallet":
+        if not (pay.get("wallet") or "").strip():
+            return None, "Please choose a wallet."
 
     order_number = "SL{}-{}".format(utcnow().strftime("%Y%m%d%H%M"), secrets.token_hex(2).upper())
     order = Order(
-        customer_id=user.id if is_authenticated else None,
-        guest_email=None if is_authenticated else guest_email,
+        customer_id=user.id,
+        guest_email=None,
         order_number=order_number,
         status="placed",
         subtotal=summary["subtotal"],
@@ -360,19 +411,25 @@ def create_order(user, *, address, delivery_method, payment_method,
     shipping.record("placed")
     db.session.add(shipping)
 
+    # COD: collected on delivery. Online: paid instantly in demo mode;
+    # with Razorpay keys, pending until the signed callback verifies.
     payment_status = "pending"
-    if payment_method == "cod":
-        brand, last4 = None, None
-    else:
-        number = (card.get("number") or "").replace(" ", "")
-        brand = "Visa" if number.startswith("4") else (
-            "Mastercard" if number.startswith("5") else "Card")
+    brand = last4 = None
+    if payment_method == "card":
+        number = (pay.get("number") or "").replace(" ", "")
+        brand = ("RuPay" if number[:2] in ("60", "65", "81", "82")
+                 else "Visa" if number.startswith("4")
+                 else "Mastercard" if number.startswith("5")
+                 else "Card")
         last4 = number[-4:]
-        # When Stripe is configured, payment stays pending until Stripe
-        # confirms (redirect return / webhook). Otherwise simulate instant
-        # capture for the built-in demo card flow.
-        if not current_app.config.get("STRIPE_SECRET_KEY"):
-            payment_status = "paid"
+    elif payment_method == "upi":
+        brand = "UPI"
+    elif payment_method == "netbanking":
+        brand = pay.get("bank", "").strip()[:40] or "Netbanking"
+    elif payment_method == "wallet":
+        brand = pay.get("wallet", "").strip()[:40] or "Wallet"
+    if payment_method in ONLINE_METHODS and not current_app.config.get("RAZORPAY_KEY_ID"):
+        payment_status = "paid"
     payment = Payment(
         order_id=order.id, method=payment_method, status=payment_status,
         amount=summary["total"], card_brand=brand, last4=last4,
@@ -388,7 +445,7 @@ def create_order(user, *, address, delivery_method, payment_method,
 
 def send_order_confirmation(order):
     items = "\n".join(
-        f"  - {i.quantity} x {i.product_name} (${i.unit_price:.2f} each)"
+        f"  - {i.quantity} x {i.product_name} ({inr(i.unit_price)} each)"
         for i in order.items
     )
     recipient_name = order.ship_name or (order.customer.name if order.customer else "there")
@@ -398,11 +455,11 @@ def send_order_confirmation(order):
         f"Order number: {order.order_number}\n"
         f"Tracking number: {order.shipping.tracking_number}\n"
         f"Items:\n{items}\n\n"
-        f"Subtotal: ${order.subtotal:.2f}\n"
-        f"Discount: -${order.discount:.2f}\n"
-        f"Tax: ${order.tax:.2f}\n"
-        f"Shipping: ${order.shipping_fee:.2f}\n"
-        f"Total: ${order.total:.2f}\n\n"
+        f"Subtotal: {inr(order.subtotal)}\n"
+        f"Discount: -{inr(order.discount)}\n"
+        f"GST: included in prices\n"
+        f"Shipping: {inr(order.shipping_fee) if order.shipping_fee else 'FREE'}\n"
+        f"Total: {inr(order.total)}\n\n"
         f"Track your order anytime from Your Account > Your Orders.\n\n"
         f"— The ShopLinq Team"
     )
@@ -436,28 +493,49 @@ def notify_back_in_stock(product):
     return sent
 
 
-def create_stripe_session(order):
-    """Create a Stripe Checkout Session for an order. Returns the session or None."""
-    key = current_app.config.get("STRIPE_SECRET_KEY")
-    if not key:
-        return None
-    import stripe
-    stripe.api_key = key
-    from flask import url_for
-    return stripe.checkout.Session.create(
-        mode="payment",
-        line_items=[{
-            "price_data": {
-                "currency": "usd",
-                "product_data": {"name": f"ShopLinq order {order.order_number}"},
-                "unit_amount": int(Decimal(str(order.total)) * 100),
-            },
-            "quantity": 1,
-        }],
-        success_url=url_for("cart.stripe_success", order_number=order.order_number, _external=True),
-        cancel_url=url_for("cart.view", _external=True),
-        metadata={"order_number": order.order_number},
-    )
+def create_razorpay_order(order):
+    """Create a Razorpay order (amount in paise) for a placed order.
+
+    Returns (razorpay_order_id, error). Uses the plain REST API via
+    urllib so no extra SDK dependency is needed.
+    """
+    key_id = current_app.config.get("RAZORPAY_KEY_ID")
+    key_secret = current_app.config.get("RAZORPAY_KEY_SECRET")
+    if not key_id or not key_secret:
+        return None, "Razorpay keys are not configured."
+    import json as _json
+    import urllib.request as _r
+    from base64 import b64encode as _b64
+    payload = _json.dumps({
+        "amount": int(Decimal(str(order.total)) * 100),  # paise
+        "currency": "INR",
+        "receipt": order.order_number,
+        "notes": {"order_number": order.order_number},
+    }).encode()
+    req = _r.Request(
+        "https://api.razorpay.com/v1/orders", data=payload,
+        headers={"Content-Type": "application/json"}, method="POST")
+    token = _b64(f"{key_id}:{key_secret}".encode()).decode()
+    req.add_header("Authorization", f"Basic {token}")
+    try:
+        with _r.urlopen(req, timeout=10) as resp:
+            data = _json.loads(resp.read().decode())
+            return data["id"], None
+    except Exception as exc:
+        current_app.logger.warning("Razorpay order creation failed: %s", exc)
+        return None, f"Payment gateway error: {exc}"
+
+
+def verify_razorpay_signature(razorpay_order_id, razorpay_payment_id, signature):
+    """Verify the HMAC-SHA256 signature Razorpay sends on payment success."""
+    import hashlib
+    import hmac
+    key_secret = current_app.config.get("RAZORPAY_KEY_SECRET", "")
+    expected = hmac.new(
+        key_secret.encode(),
+        f"{razorpay_order_id}|{razorpay_payment_id}".encode(),
+        hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature or "")
 
 
 # ------------------------------------------------------------ catalog caches

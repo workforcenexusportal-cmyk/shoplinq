@@ -111,9 +111,9 @@ def create_app():
             "pool_recycle": 280, "pool_pre_ping": True,
         }
 
-    app.config["STRIPE_SECRET_KEY"] = os.environ.get("STRIPE_SECRET_KEY", "")
-    app.config["STRIPE_PUBLISHABLE_KEY"] = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
-    app.config["STRIPE_WEBHOOK_SECRET"] = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    # Razorpay (India: UPI, cards, netbanking, wallets). Empty keys = demo mode.
+    app.config["RAZORPAY_KEY_ID"] = os.environ.get("RAZORPAY_KEY_ID", "")
+    app.config["RAZORPAY_KEY_SECRET"] = os.environ.get("RAZORPAY_KEY_SECRET", "")
     app.config["DEMO_MODE"] = os.environ.get("DEMO_MODE", "1") != "0"
 
     # --- session / cookie hardening ---
@@ -188,7 +188,9 @@ def create_app():
 
     @app.template_filter("money")
     def money(value):
-        return f"${value:,.2f}" if value is not None else "—"
+        # INR with Indian digit grouping; whole rupees without decimals.
+        from services import inr
+        return inr(value)
 
     @app.context_processor
     def inject_globals():
