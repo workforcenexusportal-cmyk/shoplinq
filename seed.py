@@ -11,7 +11,7 @@ Generates:
 import random
 from datetime import timedelta
 
-from app import create_app
+from app import create_app, _bootstrap_local_env
 from extensions import db
 from models import (
     Address, Cart, Category, Customer, Order, OrderItem, Payment,
@@ -20,6 +20,7 @@ from models import (
 )
 from services import cache_clear, slugify
 
+_bootstrap_local_env()  # zero-config first run: make a local .env if missing
 app = create_app()
 random.seed(4242)  # reproducible catalog
 
