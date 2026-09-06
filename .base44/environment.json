@@ -1,0 +1,32 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "RAZORPAY_KEY_ID",
+      "description": "Razorpay API key ID for real India payments (UPI, cards, netbanking). Optional — app runs in demo mode without it. Get from https://dashboard.razorpay.com/app/keys",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "RAZORPAY_KEY_SECRET",
+      "description": "Razorpay API key secret for payment signature verification. Optional — app runs in demo mode without it. Get from https://dashboard.razorpay.com/app/keys",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "MAIL_SERVER",
+      "description": "SMTP server hostname for sending emails (password resets, order notifications). Optional — emails are logged instead when empty.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "MAIL_USERNAME",
+      "description": "SMTP username for email authentication. Optional — only needed if MAIL_SERVER is set.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "MAIL_PASSWORD",
+      "description": "SMTP password for email authentication. Optional — only needed if MAIL_SERVER is set.",
+      "requiredAtBoot": false
+    }
+  ]
+}
