@@ -111,7 +111,7 @@
     <p class="deal-countdown">Ends in <span id="deal-countdown">--:--:--</span></p>
   </div>
   {% if deals %}
-  <div class="product-grid">
+  <div class="product-carousel">
     {% for p in deals %}{{ product_card(p) }}{% endfor %}
   </div>
   {% else %}
@@ -126,7 +126,7 @@
       <h2 class="section-title">Recommended</h2>
     </div>
   </div>
-  <div class="product-grid">
+  <div class="product-carousel">
     {% for p in recommended[:12] %}{{ product_card(p) }}{% endfor %}
   </div>
 </section>

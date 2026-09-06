@@ -633,7 +633,55 @@
       });
     });
   })();
-})();
+
+  /* ---------- navbar scroll frost ---------- */
+  (function initNavbarFrost() {
+    var topbar = document.querySelector(".topbar");
+    if (!topbar) return;
+    var onScroll = function () {
+      topbar.classList.toggle("scrolled", window.scrollY > 40);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  })();
+
+  /* ---------- scroll-reveal animations ---------- */
+  (function initScrollReveal() {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("revealed");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
+    document.querySelectorAll(
+      ".product-card, .category-tile, .cat-card, .value-prop, .testimonial, .stat, .proof-band"
+    ).forEach(function (el) {
+      el.classList.add("reveal");
+      observer.observe(el);
+    });
+  })();
+
+  /* ---------- product card hover tilt ---------- */
+  (function initCardTilt() {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    document.querySelectorAll(".product-card").forEach(function (card) {
+      card.addEventListener("mousemove", function (e) {
+        var rect = card.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var y = e.clientY - rect.top;
+        var rotateX = ((y - rect.height / 2) / (rect.height / 2)) * -6;
+        var rotateY = ((x - rect.width / 2) / (rect.width / 2)) * 6;
+        card.style.transform =
+          "perspective(800px) rotateX(" + rotateX + "deg) rotateY(" + rotateY + "deg) scale(1.03)";
+      });
+      card.addEventListener("mouseleave", function () {
+        card.style.transform = "";
+      });
+    });
+  })();
 
   /* ---------- product page: interactive star picker ---------- */
   (function initStarPicker() {
@@ -657,3 +705,4 @@
     var checked = $('input[name="rating"]:checked');
     paint(Number(checked && checked.value) || 0);
   })();
+})();
