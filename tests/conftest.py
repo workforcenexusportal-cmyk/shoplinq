@@ -8,7 +8,10 @@ import pytest
 os.environ["FLASK_DEBUG"] = "1"
 os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["DEMO_MODE"] = "1"
-os.environ.pop("RAZORPAY_KEY_ID", None)
+# Force demo mode: set (don't pop) so load_dotenv(override=False) in the app
+# factory won't repopulate real Razorpay keys from a developer's .env file.
+os.environ["RAZORPAY_KEY_ID"] = ""
+os.environ["RAZORPAY_KEY_SECRET"] = ""
 os.environ.pop("MAIL_SERVER", None)
 
 _db_fd, _db_path = tempfile.mkstemp(suffix=".db")

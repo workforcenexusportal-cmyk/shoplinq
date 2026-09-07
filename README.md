@@ -130,8 +130,8 @@ flask db upgrade
 4. Map `/static/` to the project's `static/` folder.
 5. Run `flask db upgrade` (then `python seed.py` if you want demo data), and reload the web app.
 
-## Test-card cheat sheet
+## Payment test cheat sheet (demo mode)
 
-- `4242 4242 4242 4242` — succeeds
-- `4000 0000 0000 0002` — declined
-- Any expiry date in the future works.
+- **UPI** — any valid-looking UPI ID succeeds (e.g. `name@okhdfcbank`); `fail@upi` is declined.
+- **Card** — `4111 1111 1111 1111` succeeds; `4000 0000 0000 0002` is declined. Any future expiry works.
+- **Netbanking / Wallet / Cash on delivery** — always succeed in demo mode.

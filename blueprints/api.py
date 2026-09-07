@@ -6,10 +6,12 @@ never a 500.
 from flask import Blueprint, jsonify, request, session
 from flask_login import current_user
 
-from extensions import db
-from models import Product, PromoCode, StockNotification, WishlistItem
+from extensions import db, limiter
+from models import (
+    NewsletterSubscriber, Product, PromoCode, StockNotification, WishlistItem,
+)
 from services import (
-    add_to_cart, cart_summary, remove_from_cart, send_email,
+    add_to_cart, cart_summary, inr, remove_from_cart, send_email,
     update_cart_quantity,
 )
 
@@ -66,6 +68,7 @@ def suggest():
 
 
 @api_bp.route("/cart/add", methods=["POST"])
+@limiter.limit("60 per minute")
 def cart_add():
     data = request.get_json(silent=True) or request.form
     product_id = _int_or_none(data.get("product_id"))
@@ -144,6 +147,7 @@ def cart_save_later():
 
 
 @api_bp.route("/promo", methods=["POST"])
+@limiter.limit("15 per minute; 80 per hour")
 def promo():
     data = request.get_json(silent=True) or request.form
     code = (data.get("code") or "").strip().upper()
@@ -160,7 +164,7 @@ def promo():
         payload["ok"] = False
         payload["message"] = ("That promo code isn't valid"
                               if not check else
-                              f"Code {code} requires a minimum spend of ${check.min_spend:.2f}.")
+                              f"Code {code} requires a minimum spend of {inr(check.min_spend)}.")
         return jsonify(payload), 200
     session["promo"] = code
     session.modified = True
@@ -170,6 +174,7 @@ def promo():
 
 
 @api_bp.route("/wishlist/toggle", methods=["POST"])
+@limiter.limit("60 per minute")
 def wishlist_toggle():
     if not current_user.is_authenticated:
         return jsonify({"ok": False, "message": "Sign in to use your wishlist.",
@@ -195,6 +200,7 @@ def wishlist_toggle():
 
 
 @api_bp.route("/notify", methods=["POST"])
+@limiter.limit("10 per hour; 3 per minute")
 def notify():
     data = request.get_json(silent=True) or request.form
     email = (data.get("email") or "").strip().lower()
@@ -217,3 +223,56 @@ def notify():
                f"Thanks! We'll email you as soon as “{product.name}” is back in stock.")
     return jsonify({"ok": True,
                     "message": "You're on the list — we'll email you when it's back."})
+
+
+@api_bp.route("/product/<int:product_id>/card")
+def product_card_data(product_id):
+    """Lightweight product payload for the quick-view modal."""
+    p = db.session.get(Product, product_id)
+    if not p:
+        return jsonify({"ok": False, "message": "Product not found."}), 404
+    images = [img.url for img in p.images][:5] or [p.image_url]
+    wishlisted = bool(
+        current_user.is_authenticated
+        and current_user.wishlist_items.filter_by(product_id=p.id).first()
+    )
+    desc = (p.description or "").strip()
+    if len(desc) > 260:
+        desc = desc[:257].rstrip() + "…"
+    return jsonify({
+        "ok": True,
+        "id": p.id,
+        "name": p.name,
+        "brand": p.brand or "ShopLinq",
+        "url": f"/product/{p.slug}",
+        "price": p.effective_price,
+        "list_price": p.price if (p.is_deal and p.deal_price) else None,
+        "is_deal": bool(p.is_deal and p.deal_price),
+        "rating": p.rating,
+        "rating_count": p.rating_count,
+        "in_stock": p.in_stock,
+        "stock": p.stock,
+        "description": desc,
+        "images": images,
+        "wishlisted": wishlisted,
+    })
+
+
+@api_bp.route("/newsletter/subscribe", methods=["POST"])
+@limiter.limit("12 per hour; 4 per minute")
+def newsletter_subscribe():
+    data = request.get_json(silent=True) or request.form
+    email = (data.get("email") or "").strip().lower()
+    if "@" not in email or "." not in email.split("@")[-1] or len(email) > 255:
+        return jsonify({"ok": False, "message": "Please enter a valid email address."}), 400
+    existing = NewsletterSubscriber.query.filter_by(email=email).first()
+    if existing:
+        if not existing.is_active:
+            existing.is_active = True
+            db.session.commit()
+        return jsonify({"ok": True, "message": "You're subscribed — thanks for staying in touch!"})
+    db.session.add(NewsletterSubscriber(email=email))
+    db.session.commit()
+    send_email(email, "Welcome to ShopLinq",
+               "Thanks for subscribing! You'll be first to hear about new drops and deals.")
+    return jsonify({"ok": True, "message": "You're in! Watch your inbox for new drops and deals."})

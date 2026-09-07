@@ -3,7 +3,7 @@ from flask import Blueprint, abort, render_template, request
 from flask_login import current_user
 
 from extensions import db
-from models import Category, Product, ProductQA, Review
+from models import Category, Product, Review
 from services import (
     cache_get, cache_set, get_brand_list, get_category_counts, get_nav_tree,
     get_recently_viewed, record_recently_viewed,
@@ -96,6 +96,7 @@ def products(slug=None):
         query = query.filter(Product.stock > 0)
 
     order_cols = SORTS.get(sort, SORTS["featured"])
+    query = query.order_by(*order_cols)
     pagination = query.paginate(page=page, per_page=PER_PAGE, error_out=False)
 
     return render_template(
@@ -153,7 +154,7 @@ INFO_PAGES = {
              ]},
             {"heading": "By the numbers",
              "rows": [("Products listed", "5,000+"), ("Product categories", "250+"),
-                      ("Customers served", "120,000+"), ("Countries shipped to", "38"),
+                      ("Customers served", "120,000+"), ("States & UTs served", "36"),
                       ("Average rating", "4.6 / 5")]},
         ],
     },
@@ -232,11 +233,11 @@ INFO_PAGES = {
         "blocks": [
             {"heading": "Talk to a human",
              "rows": [("Email", '<a href="mailto:support@shoplinq.com">support@shoplinq.com</a>'),
-                      ("Phone", '<a href="tel:+15550102030">+1 (555) 010-2030</a>'),
-                      ("Hours", "Mon&ndash;Fri, 9:00&ndash;18:00 ET"),
-                      ("Address", "123 Market Street, Suite 400, Springfield, IL 62704, USA")]},
+                      ("Phone", '<a href="tel:+918040404040">+91 80 4040 4040</a>'),
+                      ("Hours", "Mon&ndash;Sat, 9:00&ndash;18:00 IST"),
+                      ("Address", "4th Floor, Prestige Tower, MG Road, Bengaluru 560001, India")]},
             {"heading": "Order support",
-             "text": "Have your order number ready (it looks like SLQ-2026-1234) — it helps "
+             "text": "Have your order number ready (it looks like SL20260907-A1B2) — it helps "
                      "us find your parcel in seconds. You can also track every order "
                      "yourself from <strong>Your Orders</strong>."},
             {"heading": "Business inquiries",
@@ -273,7 +274,7 @@ INFO_PAGES = {
             {"heading": "Using ShopLinq",
              "text": "By placing an order you confirm the details you give are accurate "
                      "and that you're authorized to use the chosen payment method. "
-                     "Prices are shown in USD and include applicable taxes at checkout."},
+                     "Prices are shown in Indian Rupees (&#8377;) and are inclusive of GST."},
             {"heading": "Orders & pricing",
              "list": [
                  "An order is a contract only once we confirm it by email.",

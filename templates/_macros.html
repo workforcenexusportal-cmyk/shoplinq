@@ -16,8 +16,11 @@
       <img src="{{ p.primary_image.url }}" alt="{{ p.name }}" loading="lazy">
       {% endif %}
     </a>
-    <button type="button" class="icon-btn js-wishlist" data-product-id="{{ p.id }}"
+    <button type="button" class="icon-btn js-wishlist{% if p.id in wishlist_ids %} active{% endif %}"
+            data-product-id="{{ p.id }}" aria-pressed="{{ 'true' if p.id in wishlist_ids else 'false' }}"
             aria-label="Save to wishlist" title="Save to wishlist">&#9825;</button>
+    <button type="button" class="quick-view-btn js-quick-view" data-product-id="{{ p.id }}"
+            aria-label="Quick view {{ p.name }}">Quick view</button>
   </div>
   <div class="card-body">
     <a class="card-title" href="{{ url_for('main.product', slug=p.slug) }}">{{ p.name }}</a>

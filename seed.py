@@ -802,15 +802,15 @@ def seed():
         return order
 
     demo_addr = addr.as_dict()
-    o1 = make_order(demo, [(products["Aurora X5 5G Smartphone"], 1),
-                           (products["EchoWave Buds Air"], 1)],
-                    "delivered", 14, demo_addr)
-    o2 = make_order(demo, [(products["VortexAir Fryer 5L"], 1),
-                           (products["Lumina Vitamin C Serum"], 2),
-                           (products["Deep Work Habits"], 1)],
-                    "out_for_delivery", 6, demo_addr, method="cod")
-    o3 = make_order(demo, [(products["Stratus Book 14\" Ultrabook"], 1)],
-                    "shipped", 2, demo_addr)
+    make_order(demo, [(products["Aurora X5 5G Smartphone"], 1),
+                      (products["EchoWave Buds Air"], 1)],
+               "delivered", 14, demo_addr)
+    make_order(demo, [(products["VortexAir Fryer 5L"], 1),
+                      (products["Lumina Vitamin C Serum"], 2),
+                      (products["Deep Work Habits"], 1)],
+               "out_for_delivery", 6, demo_addr, method="cod")
+    make_order(demo, [(products["Stratus Book 14\" Ultrabook"], 1)],
+               "shipped", 2, demo_addr)
     for name in ["Pulse Boom Mini Speaker", "Solstice Wrap Dress",
                  "BlockWorks Space Station Kit"]:
         db.session.add(WishlistItem(customer_id=demo.id, product_id=products[name].id))

@@ -168,6 +168,37 @@ def create_app():
         abort(400, description="Invalid or missing CSRF token — please go back, "
               "reload the page and try again.")
 
+    # Content-Security-Policy: allow self + Google Fonts + Razorpay checkout.
+    # 'unsafe-inline' is required for the no-flash theme script and gateway
+    # snippets; all other sources are locked down.
+    csp = (
+        "default-src 'self'; "
+        "base-uri 'self'; "
+        "object-src 'none'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; "
+        "connect-src 'self' https://*.razorpay.com; "
+        "frame-src https://api.razorpay.com https://checkout.razorpay.com"
+    )
+
+    @app.after_request
+    def set_security_headers(resp):
+        resp.headers.setdefault("Content-Security-Policy", csp)
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resp.headers.setdefault("X-Frame-Options", "DENY")
+        resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        resp.headers.setdefault(
+            "Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+        if request.is_secure:
+            resp.headers.setdefault(
+                "Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains")
+        return resp
+
     from blueprints.main import main_bp
     from blueprints.auth import auth_bp
     from blueprints.cart import cart_bp
@@ -180,7 +211,7 @@ def create_app():
 
     _register_error_handlers(app)
 
-    from models import Category, Customer, Order, OrderItem, Shipping, Payment, Cart, CartItem
+    from models import Customer
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -199,7 +230,16 @@ def create_app():
             nav_categories = get_nav_tree()
         except Exception:
             nav_categories = []
-        from flask import request, url_for
+        from flask import url_for
+        from flask_login import current_user
+        from models import WishlistItem
+
+        wishlist_ids = set()
+        if current_user.is_authenticated:
+            wishlist_ids = {
+                row[0] for row in current_user.wishlist_items
+                .with_entities(WishlistItem.product_id).all()
+            }
 
         def page_url(endpoint, view_args, args, page):
             merged = dict(view_args or {})
@@ -207,10 +247,21 @@ def create_app():
             merged["page"] = page
             return url_for(endpoint, **merged)
 
+        def asset(filename):
+            """Static URL with a cache-busting ?v=<mtime> so browsers pick up edits."""
+            try:
+                fs_path = os.path.join(app.static_folder, filename)
+                version = int(os.path.getmtime(fs_path))
+            except OSError:
+                version = None
+            return url_for("static", filename=filename, v=version)
+
         return {
             "nav_categories": nav_categories,
             "cart_count": get_cart_count(),
             "page_url": page_url,
+            "asset": asset,
+            "wishlist_ids": wishlist_ids,
         }
 
     return app

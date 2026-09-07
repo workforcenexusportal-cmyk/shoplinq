@@ -5,7 +5,7 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
-from extensions import db
+from extensions import db, limiter
 from models import Address, Order
 from services import (
     ONLINE_METHODS, cart_summary, clear_cart, create_order,
@@ -67,7 +67,7 @@ def _resolve_address():
         "city": request.form.get("city", "").strip(),
         "state": request.form.get("state", "").strip(),
         "postal_code": request.form.get("postal_code", "").strip(),
-        "country": request.form.get("country", "United States").strip() or "United States",
+        "country": request.form.get("country", "India").strip() or "India",
         "phone": request.form.get("phone", "").strip(),
     }
     if not fields["full_name"] or not fields["line1"] or not fields["city"] or not fields["postal_code"]:
@@ -89,6 +89,7 @@ def _get_viewable_order(order_number):
 
 @cart_bp.route("/checkout/place", methods=["POST"])
 @login_required
+@limiter.limit("30 per hour; 8 per minute")
 def place():
     address, err = _resolve_address()
     if err:

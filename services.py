@@ -10,7 +10,7 @@ from flask import current_app, session
 
 from extensions import db
 from models import (
-    Cart, CartItem, Category, Customer, Order, OrderItem, Payment, Product,
+    Cart, CartItem, Category, Order, OrderItem, Payment, Product,
     PromoCode, Shipping, StockNotification, utcnow,
 )
 
@@ -342,25 +342,30 @@ def create_order(user, *, address, delivery_method, payment_method,
     if payment_method not in ONLINE_METHODS + ("cod",):
         return None, "Please choose a valid payment method."
 
+    # With Razorpay keys the gateway collects the real payment details on its
+    # own hosted sheet, so the demo detail fields (UPI ID, card number, bank)
+    # are not part of the checkout form and must not be validated here.
+    gateway = bool(current_app.config.get("RAZORPAY_KEY_ID"))
     pay = pay or {}
-    if payment_method == "card":
-        number = (pay.get("number") or "").replace(" ", "")
-        if len(number) != 16 or not number.isdigit():
-            return None, "Please enter a valid 16-digit card number."
-        if number == DECLINE_HINTS["card"]:
-            return None, "Your card was declined. Try the demo card 4111 1111 1111 1111."
-    elif payment_method == "upi":
-        vpa = (pay.get("vpa") or "").strip()
-        if "@" not in vpa or len(vpa.split("@")[0]) < 2 or len(vpa.split("@")[1]) < 3:
-            return None, "Please enter a valid UPI ID, e.g. name@okhdfcbank."
-        if vpa.lower() == DECLINE_HINTS["upi"]:
-            return None, "UPI payment was declined by your bank. Please try again."
-    elif payment_method == "netbanking":
-        if not (pay.get("bank") or "").strip():
-            return None, "Please choose your bank."
-    elif payment_method == "wallet":
-        if not (pay.get("wallet") or "").strip():
-            return None, "Please choose a wallet."
+    if not gateway:
+        if payment_method == "card":
+            number = (pay.get("number") or "").replace(" ", "")
+            if len(number) != 16 or not number.isdigit():
+                return None, "Please enter a valid 16-digit card number."
+            if number == DECLINE_HINTS["card"]:
+                return None, "Your card was declined. Try the demo card 4111 1111 1111 1111."
+        elif payment_method == "upi":
+            vpa = (pay.get("vpa") or "").strip()
+            if "@" not in vpa or len(vpa.split("@")[0]) < 2 or len(vpa.split("@")[1]) < 3:
+                return None, "Please enter a valid UPI ID, e.g. name@okhdfcbank."
+            if vpa.lower() == DECLINE_HINTS["upi"]:
+                return None, "UPI payment was declined by your bank. Please try again."
+        elif payment_method == "netbanking":
+            if not (pay.get("bank") or "").strip():
+                return None, "Please choose your bank."
+        elif payment_method == "wallet":
+            if not (pay.get("wallet") or "").strip():
+                return None, "Please choose a wallet."
 
     order_number = "SL{}-{}".format(utcnow().strftime("%Y%m%d%H%M"), secrets.token_hex(2).upper())
     order = Order(

@@ -4,7 +4,6 @@ from flask import (
 )
 from flask_login import current_user, login_required, login_user, logout_user
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
-from werkzeug.security import check_password_hash
 
 from extensions import db, limiter
 from models import Customer
@@ -114,6 +113,7 @@ def forgot_password():
 
 @auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
 @limiter.limit("10 per hour", methods=["POST"])
+@limiter.limit("30 per hour", methods=["GET"])
 def reset_password(token):
     user = verify_reset_token(token)
     if not user:

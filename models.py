@@ -70,9 +70,14 @@ class Address(db.Model):
     city = db.Column(db.String(120), nullable=False)
     state = db.Column(db.String(120))
     postal_code = db.Column(db.String(30), nullable=False)
-    country = db.Column(db.String(120), default="United States")
+    country = db.Column(db.String(120), default="India")
     phone = db.Column(db.String(40))
     is_default = db.Column(db.Boolean, default=False)
+
+    def one_line(self):
+        """Street-to-PIN on a single line (country shown separately in templates)."""
+        parts = [self.line1, self.line2, self.city, self.state, self.postal_code]
+        return ", ".join(p for p in parts if p)
 
     def as_dict(self):
         return {
@@ -81,10 +86,6 @@ class Address(db.Model):
             "postal_code": self.postal_code, "country": self.country,
             "phone": self.phone,
         }
-
-    def one_line(self):
-        parts = [self.line1, self.line2, self.city, self.state, self.postal_code]
-        return ", ".join([p for p in parts if p])
 
 
 class PaymentMethod(db.Model):
@@ -250,6 +251,14 @@ class StockNotification(db.Model):
     email = db.Column(db.String(255), nullable=False)
     created_date = db.Column(db.DateTime, default=utcnow)
     notified = db.Column(db.Boolean, default=False)
+
+
+class NewsletterSubscriber(db.Model):
+    __tablename__ = "newsletter_subscribers"
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_date = db.Column(db.DateTime, default=utcnow)
 
 
 class Order(db.Model):

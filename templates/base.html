@@ -2,14 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    /* Apply saved/system theme before paint to avoid a flash of the wrong theme */
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (t !== "dark" && t !== "light") {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}ShopLinq — Everything you need, delivered{% endblock %}</title>
   <meta name="description" content="ShopLinq — your online marketplace for electronics, home, fashion and more.">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0c0d14" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ asset('style.css') }}">
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body data-page="{% block page_id %}home{% endblock %}">
@@ -30,6 +45,30 @@
     </form>
 
     <nav class="topbar-actions" aria-label="Account and cart">
+      <div class="dropdown settings-dropdown" id="settings-dropdown">
+        <button type="button" class="topbar-icon dropdown-toggle" aria-label="Settings and preferences" title="Settings &amp; preferences">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.56V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+        </button>
+        <div class="dropdown-menu settings-menu" hidden>
+          <p class="settings-heading">Preferences</p>
+          <button type="button" class="settings-toggle" id="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode">
+            <span class="settings-toggle-label">
+              <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+              <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M2.5 12h2M19.5 12h2M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/></svg>
+              <span>Dark mode</span>
+            </span>
+            <span class="settings-switch" aria-hidden="true"><span class="settings-knob"></span></span>
+          </button>
+          <div class="settings-divider"></div>
+          {% if current_user.is_authenticated %}
+            <a href="{{ url_for('account.dashboard') }}">Account &amp; settings</a>
+          {% else %}
+            <a href="{{ url_for('auth.login') }}">Sign in &amp; settings</a>
+          {% endif %}
+          <a href="{{ url_for('main.info', page='faq') }}">Help center</a>
+          <a href="{{ url_for('main.info', page='contact') }}">Contact us</a>
+        </div>
+      </div>
       <div class="dropdown" id="account-dropdown">
         <button type="button" class="topbar-link dropdown-toggle">
           <span class="top-hello">{% if current_user.is_authenticated %}Hello, {{ current_user.first_name }}{% else %}Hello, sign in{% endif %}</span>
@@ -87,15 +126,29 @@
 </main>
 
 <footer class="footer">
+  <div class="footer-news">
+    <div class="container footer-news-inner">
+      <div class="footer-news-copy">
+        <h3>Get the good stuff first</h3>
+        <p>New drops, deals and restocks &mdash; straight to your inbox.</p>
+      </div>
+      <form class="newsletter-form" id="newsletter-form" novalidate>
+        <input type="email" name="email" id="newsletter-email" placeholder="you@example.com"
+               autocomplete="email" aria-label="Email address" required>
+        <button type="submit" class="btn btn-primary">Subscribe</button>
+        <span class="newsletter-msg" id="newsletter-msg" role="status" hidden></span>
+      </form>
+    </div>
+  </div>
   <div class="container footer-inner">
     <div class="footer-brand">
       <p class="logo">Shop<span>Linq</span></p>
       <p class="footer-tag">Everything you need, delivered.</p>
       <div class="footer-contact">
         <p><strong>Support</strong><br><a href="mailto:support@shoplinq.com">support@shoplinq.com</a></p>
-        <p><strong>Phone</strong><br><a href="tel:+15550102030">+1 (555) 010-2030</a></p>
-        <p><strong>Hours</strong><br>Mon&ndash;Fri, 9:00&ndash;18:00 ET</p>
-        <p><strong>HQ</strong><br>123 Market Street, Suite 400<br>Springfield, IL 62704, USA</p>
+        <p><strong>Phone</strong><br><a href="tel:+918040404040">+91 80 4040 4040</a></p>
+        <p><strong>Hours</strong><br>Mon&ndash;Sat, 9:00&ndash;18:00 IST</p>
+        <p><strong>HQ</strong><br>4th Floor, Prestige Tower, MG Road<br>Bengaluru 560001, India</p>
       </div>
       <div class="footer-social">
         <a href="https://instagram.com" aria-label="Instagram" rel="noopener">Instagram</a>
@@ -146,8 +199,17 @@
   </div>
 </footer>
 
+<button type="button" class="to-top" id="to-top" aria-label="Back to top" title="Back to top">&#8963;</button>
+
+<div class="qv-overlay" id="quick-view" hidden>
+  <div class="qv-dialog" role="dialog" aria-modal="true" aria-labelledby="qv-name">
+    <button type="button" class="qv-close" id="qv-close" aria-label="Close quick view">&times;</button>
+    <div class="qv-body" id="qv-body"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast" hidden></div>
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ asset('script.js') }}"></script>
 </body>
 </html>
